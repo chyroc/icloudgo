@@ -52,12 +52,9 @@ func (r *PhotoAlbum) Photos() ([]*PhotoAsset, error) {
 		}
 
 		for _, masterRecord := range masterRecords {
-			assets = append(assets, &PhotoAsset{
-				service:       r.service,
-				_masterRecord: masterRecord,
-				_assetRecord:  assetRecords[masterRecord.RecordName],
-				_versions:     nil,
-			})
+			assets = append(assets,
+				r.service.newPhotoAsset(masterRecord, assetRecords[masterRecord.RecordName]),
+			)
 		}
 	}
 
