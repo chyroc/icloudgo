@@ -1,4 +1,4 @@
-package icloudgo
+package internal
 
 type User struct {
 	AccountName string `json:"accountName"`

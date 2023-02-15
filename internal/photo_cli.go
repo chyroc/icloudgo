@@ -1,4 +1,4 @@
-package icloudgo
+package internal
 
 import (
 	"fmt"
