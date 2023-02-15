@@ -6,4 +6,49 @@ Access Apple iCloud via go
 
 ### By Docker
 
+```shell
+docker run \
+  -e ICLOUD_USERNAME=your_icloud_username \
+  -e ICLOUD_PASSWORD=your_icloud_password \
+  -e ICLOUD_COOKIE_DIR=/icloud_cookie \
+  -e ICLOUD_DOMAIN=com \
+  -e ICLOUD_OUTPUT=/icloud_photos \
+  -e ICLOUD_ALBUM= \
+  -e ICLOUD_RECENT=0 \
+  -e ICLOUD_DUPLICATE=overwrite \
+  -v /path/to/your/cookie:/icloud_cookie \
+  -v /path/to/your/photos:/icloud_photos \
+  ghcr.io/chyroc/icloud-photo-cli download
+```
+
 ### By Go
+
+- **Install**
+
+```shell
+go install github.com/chyroc/icloudgo/icloud-photo-cli@latest
+```
+
+- **Usage**
+
+```shell
+NAME:
+   icloud-photo-cli download
+
+USAGE:
+   icloud-photo-cli download [command options] [arguments...]
+
+DESCRIPTION:
+   download photos
+
+OPTIONS:
+   --username value, -u value      apple id username [$ICLOUD_USERNAME]
+   --password value, -p value      apple id password [$ICLOUD_PASSWORD]
+   --cookie-dir value, -c value    cookie dir [$ICLOUD_COOKIE_DIR]
+   --domain value, -d value        icloud domain(com,cn) (default: com) [$ICLOUD_DOMAIN]
+   --output value, -o value        output dir (default: ./iCloudPhotos) [$ICLOUD_OUTPUT]
+   --album value, -a value         album name, if not set, download all albums [$ICLOUD_ALBUM]
+   --recent value, -r value        download recent photos, if not set, means all (default: 0) [$ICLOUD_RECENT]
+   --duplicate value, --dup value  duplicate policy, if not set, means skip [$ICLOUD_DUPLICATE]
+   --help, -h                      show help
+```
