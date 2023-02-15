@@ -9,7 +9,7 @@ import (
 func (r *Client) validateToken() error {
 	fmt.Printf("Checking session token validity\n")
 
-	text, err := r.Request(&reqParam{
+	text, err := r.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     r.setupEndpoint + "/validate",
 		Headers: r.getCommonHeaders(map[string]string{}),

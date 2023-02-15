@@ -7,7 +7,7 @@ import (
 )
 
 func (r *PhotoService) getFolders() ([]*folderRecord, error) {
-	text, err := r.icloud.Request(&reqParam{
+	text, err := r.icloud.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     r.serviceEndpoint + "/records/query",
 		Headers: r.icloud.getCommonHeaders(map[string]string{"Content-type": "text/plain"}),
@@ -64,9 +64,8 @@ type folderRecord struct {
 		AlbumNameEnc *folderTypeValue `json:"albumNameEnc,omitempty"`
 		IsDeleted    *folderTypeValue `json:"isDeleted,omitempty"`
 	} `json:"fields"`
-	PluginFields struct {
-	} `json:"pluginFields"`
-	RecordChangeTag string `json:"recordChangeTag"`
+	PluginFields    struct{} `json:"pluginFields"`
+	RecordChangeTag string   `json:"recordChangeTag"`
 	Created         struct {
 		Timestamp      int64  `json:"timestamp"`
 		UserRecordName string `json:"userRecordName"`

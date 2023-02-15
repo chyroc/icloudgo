@@ -7,7 +7,7 @@ import (
 )
 
 func (r *PhotoService) checkPhotoServiceState() error {
-	text, err := r.icloud.Request(&reqParam{
+	text, err := r.icloud.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     fmt.Sprintf("%s/records/query", r.serviceEndpoint),
 		Body:    `{"query":{"recordType":"CheckIndexingState"},"zoneID":{"zoneName":"PrimarySync"}}`,
@@ -49,9 +49,8 @@ type photoDatabaseRecord struct {
 			Type  string `json:"type"`
 		} `json:"state"`
 	} `json:"fields"`
-	PluginFields struct {
-	} `json:"pluginFields"`
-	RecordChangeTag string `json:"recordChangeTag"`
+	PluginFields    struct{} `json:"pluginFields"`
+	RecordChangeTag string   `json:"recordChangeTag"`
 	Created         struct {
 		Timestamp      int64  `json:"timestamp"`
 		UserRecordName string `json:"userRecordName"`

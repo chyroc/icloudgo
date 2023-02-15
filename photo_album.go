@@ -32,9 +32,23 @@ type PhotoAlbum struct {
 	QueryFilter []*folderMetaDataQueryFilter
 
 	// cache
-	_length   *int
-	_pageSize int
-	lock      *sync.Mutex
+	_size *int
+	lock  *sync.Mutex
+}
+
+func (r *PhotoService) newPhotoAlbum(name, listType, objType, direction string, queryFilter []*folderMetaDataQueryFilter) *PhotoAlbum {
+	return &PhotoAlbum{
+		service: r,
+
+		Name:        name,
+		ListType:    listType,
+		ObjType:     objType,
+		Direction:   direction,
+		QueryFilter: queryFilter,
+
+		_size: nil,
+		lock:  new(sync.Mutex),
+	}
 }
 
 func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {
@@ -49,19 +63,7 @@ func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {
 	tmp := map[string]*PhotoAlbum{}
 
 	for name, props := range icloudPhotoFolderMeta {
-		tmp[name] = &PhotoAlbum{
-			service: r,
-
-			Name:        name,
-			ListType:    props.ListType,
-			ObjType:     props.ObjType,
-			Direction:   props.Direction,
-			QueryFilter: props.QueryFilter,
-
-			_pageSize: 100,
-			_length:   nil,
-			lock:      new(sync.Mutex),
-		}
+		tmp[name] = r.newPhotoAlbum(name, props.ListType, props.ObjType, props.Direction, props.QueryFilter)
 	}
 
 	folders, err := r.getFolders()
@@ -86,23 +88,11 @@ func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {
 			continue
 		}
 
-		tmp[string(folderName)] = &PhotoAlbum{
-			service: r,
-
-			Name:      string(folderName),
-			ListType:  "CPLContainerRelationLiveByAssetDate",
-			ObjType:   folderObjType,
-			Direction: "ASCENDING",
-			QueryFilter: []*folderMetaDataQueryFilter{{
-				FieldName:  "parentId",
-				Comparator: "EQUALS",
-				FieldValue: &folderTypeValue{Type: "STRING", Value: folderID},
-			}},
-
-			_pageSize: 100,
-			_length:   nil,
-			lock:      new(sync.Mutex),
-		}
+		tmp[string(folderName)] = r.newPhotoAlbum(string(folderName), "CPLContainerRelationLiveByAssetDate", folderObjType, "ASCENDING", []*folderMetaDataQueryFilter{{
+			FieldName:  "parentId",
+			Comparator: "EQUALS",
+			FieldValue: &folderTypeValue{Type: "STRING", Value: folderID},
+		}})
 	}
 
 	r.lock.Lock()

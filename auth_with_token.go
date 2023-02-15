@@ -8,7 +8,7 @@ import (
 
 // auth using session token
 func (r *Client) authWithToken() error {
-	text, err := r.Request(&reqParam{
+	text, err := r.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     r.setupEndpoint + "/accountLogin",
 		Headers: r.getCommonHeaders(map[string]string{}),

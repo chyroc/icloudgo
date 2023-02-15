@@ -80,7 +80,7 @@ func newClient(option *ClientOption) (*Client, error) {
 
 		cli.cookieDir = option.CookieDir
 		if f, _ := os.Stat(cli.cookieDir); f == nil {
-			if err := os.MkdirAll(cli.cookieDir, 0700); err != nil {
+			if err := os.MkdirAll(cli.cookieDir, 0o700); err != nil {
 				return nil, fmt.Errorf("create cookie dir failed, err: %w", err)
 			}
 		}
@@ -122,4 +122,11 @@ func newClient(option *ClientOption) (*Client, error) {
 func readFile(path string) []byte {
 	bs, _ := os.ReadFile(path)
 	return bs
+}
+
+func (r *Client) getWebServiceURL(key string) (string, error) {
+	if _, ok := r.Data.Webservices[key]; !ok {
+		return "", fmt.Errorf("webservice not available: %s", key)
+	}
+	return r.Data.Webservices[key].URL, nil
 }

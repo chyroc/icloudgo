@@ -11,7 +11,7 @@ func (r *PhotoAsset) delete() {
 		r._assetRecord.RecordType,
 		r._masterRecord.RecordChangeTag,
 	)
-	text, err := r.service.icloud.Request(&reqParam{
+	text, err := r.service.icloud.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     fmt.Sprintf("%s/records/modify", r.service.serviceEndpoint),
 		Querys:  r.service.querys,

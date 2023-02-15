@@ -6,7 +6,7 @@ import (
 )
 
 func (r *Client) authWithCredentialsService(service string) error {
-	_, err := r.Request(&reqParam{
+	_, err := r.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     r.setupEndpoint + "/accountLogin",
 		Headers: r.getCommonHeaders(map[string]string{}),

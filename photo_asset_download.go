@@ -25,7 +25,7 @@ func (r *PhotoAsset) Download(version PhotoVersion) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("version %s not found, valid: %s", version, strings.Join(keys, ","))
 	}
 
-	body, err := r.service.icloud.RequestStream(&reqParam{
+	body, err := r.service.icloud.requestStream(&rawReq{
 		Method:  http.MethodGet,
 		URL:     versionDetail.URL,
 		Headers: r.service.icloud.getCommonHeaders(map[string]string{}),

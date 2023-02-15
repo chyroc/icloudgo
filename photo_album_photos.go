@@ -6,7 +6,7 @@ import (
 )
 
 // Returns the album photos
-func (r *PhotoAlbum) Photos() ([]*PhotoAsset, error) {
+func (r *PhotoAlbum) Photos(count int) ([]*PhotoAsset, error) {
 	offset := 0
 	if r.Direction == "DESCENDING" {
 		offset = r.Size() - 1
@@ -14,7 +14,7 @@ func (r *PhotoAlbum) Photos() ([]*PhotoAsset, error) {
 
 	var assets []*PhotoAsset
 	for {
-		text, err := r.service.icloud.Request(&reqParam{
+		text, err := r.service.icloud.request(&rawReq{
 			Method:  "POST",
 			URL:     fmt.Sprintf("%s/records/query", r.service.serviceEndpoint),
 			Querys:  r.service.querys,
@@ -55,6 +55,9 @@ func (r *PhotoAlbum) Photos() ([]*PhotoAsset, error) {
 			assets = append(assets,
 				r.service.newPhotoAsset(masterRecord, assetRecords[masterRecord.RecordName]),
 			)
+			if len(assets) >= count {
+				return assets, nil
+			}
 		}
 	}
 
@@ -78,7 +81,7 @@ func (r *PhotoAlbum) listQueryGenerate(offset int, listType string, direction st
 			}, queryFilter...),
 			"recordType": listType,
 		},
-		"resultsLimit": r._pageSize * 2,
+		"resultsLimit": 200,
 		"desiredKeys": []string{
 			"resJPEGFullWidth",
 			"resJPEGFullHeight",
@@ -455,9 +458,8 @@ type photoRecord struct {
 			Type  string `json:"type"`
 		} `json:"locationEnc,omitempty"`
 	} `json:"fields"`
-	PluginFields struct {
-	} `json:"pluginFields"`
-	RecordChangeTag string `json:"recordChangeTag"`
+	PluginFields    struct{} `json:"pluginFields"`
+	RecordChangeTag string   `json:"recordChangeTag"`
 	Created         struct {
 		Timestamp      int64  `json:"timestamp"`
 		UserRecordName string `json:"userRecordName"`

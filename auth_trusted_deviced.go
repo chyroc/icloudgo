@@ -8,7 +8,7 @@ import (
 
 // Returns devices trusted for two-step authentication.
 func (r *Client) trustedDevices() ([]*device, error) {
-	text, err := r.Request(&reqParam{
+	text, err := r.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     r.setupEndpoint + "/listDevices",
 		Headers: r.getCommonHeaders(map[string]string{}),

@@ -15,8 +15,8 @@ func (r *PhotoAlbum) GetSize() (int, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if r._length != nil {
-		return *r._length, nil
+	if r._size != nil {
+		return *r._size, nil
 	}
 
 	size, err := r.getSize()
@@ -24,12 +24,12 @@ func (r *PhotoAlbum) GetSize() (int, error) {
 		return 0, err
 	}
 
-	r._length = &size
+	r._size = &size
 	return size, nil
 }
 
 func (r *PhotoAlbum) getSize() (int, error) {
-	text, err := r.service.icloud.Request(&reqParam{
+	text, err := r.service.icloud.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     fmt.Sprintf("%s/internal/records/query/batch", r.service.serviceEndpoint),
 		Querys:  r.service.querys,
@@ -80,9 +80,8 @@ type getAlbumSizeResp struct {
 					Type  string `json:"type"`
 				} `json:"itemCount"`
 			} `json:"fields"`
-			PluginFields struct {
-			} `json:"pluginFields"`
-			RecordChangeTag string `json:"recordChangeTag"`
+			PluginFields    struct{} `json:"pluginFields"`
+			RecordChangeTag string   `json:"recordChangeTag"`
 			Created         struct {
 				Timestamp      int64  `json:"timestamp"`
 				UserRecordName string `json:"userRecordName"`

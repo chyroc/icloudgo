@@ -11,7 +11,7 @@ func (r *Client) trustSession() error {
 	headers = setIfNotEmpty(headers, "scnt", r.SessionData.Scnt)
 	headers = setIfNotEmpty(headers, "X-Apple-ID-Session-Id", r.SessionData.SessionID)
 
-	_, err := r.Request(&reqParam{
+	_, err := r.request(&rawReq{
 		Method:       http.MethodGet,
 		URL:          r.authEndpoint + "/2sv/trust",
 		Headers:      headers,

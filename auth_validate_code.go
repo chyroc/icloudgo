@@ -12,7 +12,7 @@ func (r *Client) validate2FACode(code string) error {
 	headers = setIfNotEmpty(headers, "scnt", r.SessionData.Scnt)
 	headers = setIfNotEmpty(headers, "X-Apple-ID-Session-Id", r.SessionData.SessionID)
 
-	if _, err := r.Request(&reqParam{
+	if _, err := r.request(&rawReq{
 		Method:       http.MethodPost,
 		URL:          r.authEndpoint + "/verify/trusteddevice/securitycode",
 		Headers:      headers,
