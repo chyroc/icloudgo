@@ -5,20 +5,20 @@ import (
 	"net/http"
 )
 
-func (r *Client) signIn() error {
+func (r *Client) signIn(password string) error {
 	body := map[string]any{
-		"accountName": r.User.AccountName,
-		"password":    r.User.Password,
+		"accountName": r.appleID,
+		"password":    password,
 		"rememberMe":  true,
 		"trustTokens": []string{},
 	}
-	if r.SessionData.TrustToken != "" {
-		body["trustTokens"] = []string{r.SessionData.TrustToken}
+	if r.sessionData.TrustToken != "" {
+		body["trustTokens"] = []string{r.sessionData.TrustToken}
 	}
 
 	headers := r.getAuthHeaders(map[string]string{})
-	headers = setIfNotEmpty(headers, "scnt", r.SessionData.Scnt)
-	headers = setIfNotEmpty(headers, "X-Apple-ID-Session-Id", r.SessionData.SessionID)
+	headers = setIfNotEmpty(headers, "scnt", r.sessionData.Scnt)
+	headers = setIfNotEmpty(headers, "X-Apple-ID-Session-Id", r.sessionData.SessionID)
 
 	_, err := r.request(&rawReq{
 		Method:       http.MethodPost,

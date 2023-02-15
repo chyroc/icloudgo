@@ -53,7 +53,7 @@ func (r *Client) doRequest(req *rawReq) (string, io.ReadCloser, error) {
 	if resp != nil {
 		for k, callback := range contextHeader {
 			if resp.Header.Get(k) != "" {
-				callback(r.SessionData, resp.Header.Get(k))
+				callback(r.sessionData, resp.Header.Get(k))
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func (r *Client) getAuthHeaders(overwrite map[string]string) map[string]string {
 		"X-Apple-OAuth-Require-Grant-Code": "true",
 		"X-Apple-OAuth-Response-Mode":      "web_message",
 		"X-Apple-OAuth-Response-Type":      "code",
-		"X-Apple-OAuth-State":              r.ClientID,
+		"X-Apple-OAuth-State":              r.clientID,
 		"X-Apple-Widget-Key":               "d39ba9916b7251055b22c7f910e2ea796ee65e98b2ddecea8f5dde8d9d1a815d",
 
 		"Origin":     r.homeEndpoint,

@@ -9,8 +9,8 @@ func (r *Client) validate2FACode(code string) error {
 	body := map[string]interface{}{"securityCode": map[string]string{"code": code}}
 
 	headers := r.getAuthHeaders(map[string]string{"Accept": "application/json"})
-	headers = setIfNotEmpty(headers, "scnt", r.SessionData.Scnt)
-	headers = setIfNotEmpty(headers, "X-Apple-ID-Session-Id", r.SessionData.SessionID)
+	headers = setIfNotEmpty(headers, "scnt", r.sessionData.Scnt)
+	headers = setIfNotEmpty(headers, "X-Apple-ID-Session-Id", r.sessionData.SessionID)
 
 	if _, err := r.request(&rawReq{
 		Method:       http.MethodPost,

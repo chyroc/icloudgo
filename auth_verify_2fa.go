@@ -11,7 +11,7 @@ func (r *Client) verify2Fa() error {
 	}
 
 	if r.isRequires2FA() {
-		code, err := r.TwoFACodeGetter()
+		code, err := r.twoFACodeGetter(r.appleID)
 		if err != nil {
 			return fmt.Errorf("get 2fa code failed, err: %w", err)
 		}

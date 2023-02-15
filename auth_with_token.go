@@ -13,10 +13,10 @@ func (r *Client) authWithToken() error {
 		URL:     r.setupEndpoint + "/accountLogin",
 		Headers: r.getCommonHeaders(map[string]string{}),
 		Body: map[string]any{
-			"accountCountryCode": r.SessionData.AccountCountry,
-			"dsWebAuthToken":     r.SessionData.SessionToken,
+			"accountCountryCode": r.sessionData.AccountCountry,
+			"dsWebAuthToken":     r.sessionData.SessionToken,
 			"extended_login":     true,
-			"trustToken":         r.SessionData.TrustToken,
+			"trustToken":         r.sessionData.TrustToken,
 		},
 		ExpectStatus: newSet[int](200),
 	})

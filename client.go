@@ -10,9 +10,14 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type TextGetter func() (string, error)
+type TextGetter func(appleID string) (string, error)
 
 type Client struct {
+	// param
+	appleID         string
+	passwordGetter  TextGetter
+	twoFACodeGetter TextGetter
+
 	// storage
 	cookieDir       string
 	cookiePath      string
@@ -20,21 +25,15 @@ type Client struct {
 	sessionDataPath string
 
 	// user data
-	User        *User
-	ClientID    string
-	WithFamily  bool
-	SessionData *SessionData
+	clientID    string
+	sessionData *SessionData
 	Data        *ValidateData
+	httpCli     *gorequests.Session
 
 	// server
-	httpCli       *gorequests.Session
 	setupEndpoint string
 	homeEndpoint  string
 	authEndpoint  string
-
-	// iface
-	TwoFACodeGetter TextGetter
-	PasswordGetter  TextGetter
 
 	// service
 	photo *PhotoService
@@ -54,8 +53,8 @@ func New(option *ClientOption) (*Client, error) {
 
 func newClient(option *ClientOption) (*Client, error) {
 	cli := &Client{
-		TwoFACodeGetter: option.TwoFACodeGetter,
-		PasswordGetter:  option.PasswordGetter,
+		twoFACodeGetter: option.TwoFACodeGetter,
+		passwordGetter:  option.PasswordGetter,
 	}
 
 	// domain
@@ -94,22 +93,22 @@ func newClient(option *ClientOption) (*Client, error) {
 	{
 		// client id
 		if clientIDCached := readFile(cli.clientIDPath); len(clientIDCached) > 0 {
-			cli.ClientID = string(clientIDCached)
+			cli.clientID = string(clientIDCached)
 		} else {
-			cli.ClientID = "auth-" + uuid.NewV1().String()
+			cli.clientID = "auth-" + uuid.NewV1().String()
 		}
 
 		// session data
-		cli.SessionData = new(SessionData)
+		cli.sessionData = new(SessionData)
 		if sessionDataCached := readFile(cli.sessionDataPath); len(sessionDataCached) > 0 {
-			_ = json.Unmarshal(sessionDataCached, cli.SessionData)
+			_ = json.Unmarshal(sessionDataCached, cli.sessionData)
 		}
 
 		// data
 		cli.Data = new(ValidateData)
 	}
 
-	cli.User = &User{AccountName: option.AppID, Password: ""}
+	cli.appleID = option.AppID
 
 	cli.httpCli = gorequests.NewSession(
 		fmt.Sprintf("%s/session.json", cli.cookieDir),
