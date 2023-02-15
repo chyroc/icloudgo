@@ -7,8 +7,10 @@ import (
 	"strings"
 )
 
-var ErrValidateCodeWrong = NewError("-21669", "validate code wrong")
-var ErrPhotosIterateEnd = NewError("photos_iterate_end", "photos iterate end")
+var (
+	ErrValidateCodeWrong = NewError("-21669", "validate code wrong")
+	ErrPhotosIterateEnd  = NewError("photos_iterate_end", "photos iterate end")
+)
 
 type Error struct {
 	Code    string

@@ -2,6 +2,7 @@ package icloudgo
 
 import (
 	"encoding/base64"
+	"fmt"
 	"sync"
 )
 
@@ -34,4 +35,20 @@ func (r *PhotoAsset) ID() string {
 
 func (r *PhotoAsset) Size() int {
 	return r._masterRecord.Fields.ResOriginalRes.Value.Size
+}
+
+func (r *PhotoAsset) FormatSize() string {
+	return formatSize(r.Size())
+}
+
+func formatSize(size int) string {
+	if size < 1024 {
+		return fmt.Sprintf("%dB", size)
+	} else if size < 1024*1024 {
+		return fmt.Sprintf("%.2fKB", float64(size)/1024)
+	} else if size < 1024*1024*1024 {
+		return fmt.Sprintf("%.2fMB", float64(size)/1024/1024)
+	} else {
+		return fmt.Sprintf("%.2fGB", float64(size)/1024/1024/1024)
+	}
 }

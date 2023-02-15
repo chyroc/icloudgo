@@ -110,16 +110,18 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 }
 
 func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, duplicatePolicy string) error {
-	fmt.Printf("start %v, %v, %v\n", photo.ID(), photo.Filename(), photo.Size())
-	ext := filepath.Ext(photo.Filename())
-	pureFilename := strings.ReplaceAll(photo.Filename(), "/", "-")
-	path := filepath.Join(outputDir, pureFilename+ext)
+	filename := photo.Filename()
+	fmt.Printf("start %v, %v, %v\n", photo.ID(), filename, photo.FormatSize())
+	ext := filepath.Ext(filename)
+	filename = strings.ReplaceAll(filename, "/", "-")
+	filename = filename[:len(filename)-len(ext)]
+	path := filepath.Join(outputDir, filename+ext)
 
 	f, _ := os.Stat(path)
 	isFileDup := f != nil && photo.Size() != int(f.Size())
 	if isFileDup && duplicatePolicy == downloadPhotoDuplicatePolicyRename {
 		for i := 2; i < 10000; i++ {
-			path = filepath.Join(outputDir, fmt.Sprintf("%s(%d)%s", pureFilename, i, ext))
+			path = filepath.Join(outputDir, fmt.Sprintf("%s(%d)%s", filename, i, ext))
 			if f, _ := os.Stat(path); f == nil {
 				break
 			}
