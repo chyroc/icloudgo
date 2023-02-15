@@ -3,10 +3,63 @@ package icloudgo
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 )
 
-// Returns the album photos
-func (r *PhotoAlbum) Photos(count int) ([]*PhotoAsset, error) {
+func (r *PhotoAlbum) PhotosIter() PhotosIterNext {
+	offset := 0
+	if r.Direction == "DESCENDING" {
+		offset = r.Size() - 1
+	}
+	return &photosIterNextImpl{
+		album:  r,
+		lock:   new(sync.Mutex),
+		offset: offset,
+		assets: nil,
+		index:  0,
+		end:    false,
+	}
+}
+
+func (r *PhotoAlbum) GetPhotosByOffset(offset, limit int) ([]*PhotoAsset, error) {
+	var assets []*PhotoAsset
+
+	text, err := r.service.icloud.request(&rawReq{
+		Method:  "POST",
+		URL:     fmt.Sprintf("%s/records/query", r.service.serviceEndpoint),
+		Querys:  r.service.querys,
+		Headers: r.service.icloud.getCommonHeaders(map[string]string{}),
+		Body:    r.listQueryGenerate(offset, limit, r.ListType, r.Direction, r.QueryFilter),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get album photos failed, err: %w", err)
+	}
+	res := new(getPhotosResp)
+	if err = json.Unmarshal([]byte(text), res); err != nil {
+		return nil, fmt.Errorf("get album photos unmarshal failed, err: %w", err)
+	}
+
+	var masterRecords []*photoRecord
+	assetRecords := map[string]*photoRecord{}
+	for _, record := range res.Records {
+		if record.RecordType == "CPLAsset" {
+			masterID := record.Fields.MasterRef.Value.RecordName
+			assetRecords[masterID] = record
+		} else if record.RecordType == "CPLMaster" {
+			masterRecords = append(masterRecords, record)
+		}
+	}
+
+	for _, masterRecord := range masterRecords {
+		assets = append(assets,
+			r.service.newPhotoAsset(masterRecord, assetRecords[masterRecord.RecordName]),
+		)
+	}
+
+	return assets, nil
+}
+
+func (r *PhotoAlbum) GetPhotosByCount(count int) ([]*PhotoAsset, error) {
 	offset := 0
 	if r.Direction == "DESCENDING" {
 		offset = r.Size() - 1
@@ -14,57 +67,35 @@ func (r *PhotoAlbum) Photos(count int) ([]*PhotoAsset, error) {
 
 	var assets []*PhotoAsset
 	for {
-		text, err := r.service.icloud.request(&rawReq{
-			Method:  "POST",
-			URL:     fmt.Sprintf("%s/records/query", r.service.serviceEndpoint),
-			Querys:  r.service.querys,
-			Headers: r.service.icloud.getCommonHeaders(map[string]string{}),
-			Body:    r.listQueryGenerate(offset, r.ListType, r.Direction, r.QueryFilter),
-		})
+		tmp, err := r.GetPhotosByOffset(offset, 200)
 		if err != nil {
-			return nil, fmt.Errorf("get album photos failed, err: %w", err)
+			return nil, err
 		}
-		res := new(getPhotosResp)
-		if err = json.Unmarshal([]byte(text), res); err != nil {
-			return nil, fmt.Errorf("get album photos unmarshal failed, err: %w", err)
-		}
-
-		var masterRecords []*photoRecord
-		assetRecords := map[string]*photoRecord{}
-		for _, record := range res.Records {
-			if record.RecordType == "CPLAsset" {
-				masterID := record.Fields.MasterRef.Value.RecordName
-				assetRecords[masterID] = record
-			} else if record.RecordType == "CPLMaster" {
-				masterRecords = append(masterRecords, record)
-			}
-		}
-
-		masterRecordsLen := len(masterRecords)
-		if masterRecordsLen == 0 {
+		if len(tmp) == 0 {
 			break
 		}
-
-		if r.Direction == "DESCENDING" {
-			offset = offset - masterRecordsLen
-		} else {
-			offset = offset + masterRecordsLen
-		}
-
-		for _, masterRecord := range masterRecords {
-			assets = append(assets,
-				r.service.newPhotoAsset(masterRecord, assetRecords[masterRecord.RecordName]),
-			)
+		for _, v := range tmp {
+			assets = append(assets, v)
 			if len(assets) >= count {
 				return assets, nil
 			}
 		}
+		offset = r.calOffset(offset, len(tmp))
 	}
 
 	return assets, nil
 }
 
-func (r *PhotoAlbum) listQueryGenerate(offset int, listType string, direction string, queryFilter []*folderMetaDataQueryFilter) any {
+func (r *PhotoAlbum) calOffset(offset, lastAssetLen int) int {
+	if r.Direction == "DESCENDING" {
+		offset = offset - lastAssetLen
+	} else {
+		offset = offset + lastAssetLen
+	}
+	return offset
+}
+
+func (r *PhotoAlbum) listQueryGenerate(offset, limit int, listType string, direction string, queryFilter []*folderMetaDataQueryFilter) any {
 	res := map[string]any{
 		"query": map[string]any{
 			"filterBy": append([]*folderMetaDataQueryFilter{
@@ -81,7 +112,7 @@ func (r *PhotoAlbum) listQueryGenerate(offset int, listType string, direction st
 			}, queryFilter...),
 			"recordType": listType,
 		},
-		"resultsLimit": 200,
+		"resultsLimit": limit,
 		"desiredKeys": []string{
 			"resJPEGFullWidth",
 			"resJPEGFullHeight",

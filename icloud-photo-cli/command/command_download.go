@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,8 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	defer cli.Close()
 
 	if err := cli.Authenticate(false, nil); err != nil {
 		return err
@@ -88,12 +91,16 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 		}
 	}
 
-	photos, err := album.Photos(count)
-	if err != nil {
-		return err
-	}
+	photoIter := album.PhotosIter()
+	for {
+		photoAsset, err := photoIter.Next()
+		if err != nil {
+			if errors.Is(err, icloudgo.ErrPhotosIterateEnd) {
+				return nil
+			}
+			return err
+		}
 
-	for _, photoAsset := range photos {
 		if err := downloadPhotoAsset(photoAsset, outputDir, duplicatePolicy); err != nil {
 			return err
 		}
@@ -105,7 +112,7 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, duplicatePolicy string) error {
 	fmt.Printf("start %v, %v, %v\n", photo.ID(), photo.Filename(), photo.Size())
 	ext := filepath.Ext(photo.Filename())
-	pureFilename := strings.ReplaceAll(photo.ID(), "/", "-")
+	pureFilename := strings.ReplaceAll(photo.Filename(), "/", "-")
 	path := filepath.Join(outputDir, pureFilename+ext)
 
 	f, _ := os.Stat(path)

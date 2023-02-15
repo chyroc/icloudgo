@@ -5,7 +5,13 @@ import (
 	"strings"
 )
 
-func (r *Client) Authenticate(forceRefresh bool, service *string) error {
+func (r *Client) Authenticate(forceRefresh bool, service *string) (finalErr error) {
+	defer func() {
+		if finalErr == nil {
+			r.flush()
+		}
+	}()
+
 	var errs []string
 	if r.sessionData.SessionToken != "" && !forceRefresh {
 		fmt.Printf("Checking session token validity")
