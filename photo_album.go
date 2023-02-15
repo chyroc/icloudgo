@@ -3,6 +3,7 @@ package icloudgo
 import (
 	"encoding/base64"
 	"fmt"
+	"sync"
 )
 
 const (
@@ -33,6 +34,7 @@ type PhotoAlbum struct {
 	// cache
 	_length   *int
 	_pageSize int
+	lock      *sync.Mutex
 }
 
 func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {
@@ -58,6 +60,7 @@ func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {
 
 			_pageSize: 100,
 			_length:   nil,
+			lock:      new(sync.Mutex),
 		}
 	}
 
@@ -98,6 +101,7 @@ func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {
 
 			_pageSize: 100,
 			_length:   nil,
+			lock:      new(sync.Mutex),
 		}
 	}
 

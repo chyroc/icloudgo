@@ -9,7 +9,7 @@ import (
 func (r *PhotoAlbum) Photos() ([]*PhotoAsset, error) {
 	offset := 0
 	if r.Direction == "DESCENDING" {
-		offset = r.mustSize() - 1
+		offset = r.Size() - 1
 	}
 
 	var assets []*PhotoAsset
