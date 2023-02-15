@@ -11,7 +11,7 @@ RUN test -e /go/bin/icloud-photo-cli
 
 FROM alpine:latest
 
-LABEL org.opencontainers.image.source=https://github.com/chyroc/icloud-photo-cli
+LABEL org.opencontainers.image.source=https://github.com/chyroc/icloudgo
 LABEL org.opencontainers.image.description="Operate iCloud Photos."
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
