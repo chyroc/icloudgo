@@ -57,6 +57,7 @@ func NewDownloadFlag() []cli.Flag {
 
 func Download(c *cli.Context) error {
 	username := c.String("username")
+	password := c.String("ICLOUD_PASSWORD")
 	cookieDir := c.String("cookie-dir")
 	domain := c.String("domain")
 	output := c.String("output")
@@ -67,8 +68,8 @@ func Download(c *cli.Context) error {
 	cli, err := icloudgo.New(&icloudgo.ClientOption{
 		AppID:           username,
 		CookieDir:       cookieDir,
-		PasswordGetter:  getTextInput("apple id password"),
-		TwoFACodeGetter: getTextInput("2fa code"),
+		PasswordGetter:  getTextInput("apple id password", password),
+		TwoFACodeGetter: getTextInput("2fa code", ""),
 		Domain:          domain,
 	})
 	if err != nil {
