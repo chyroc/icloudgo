@@ -1,0 +1,19 @@
+version: "3.7"
+
+services:
+  app:
+    image: ghcr.io/chyroc/icloud-photo-cli:0.1.0
+    environment:
+      - ICLOUD_USERNAME=your_icloud_username
+      - ICLOUD_PASSWORD=your_icloud_password
+      - ICLOUD_COOKIE_DIR=/icloud_cookie
+      - ICLOUD_DOMAIN=cn
+      - ICLOUD_OUTPUT=/icloud_photos
+      - ICLOUD_ALBUM=
+      - ICLOUD_RECENT=0
+      - ICLOUD_DUPLICATE=overwrite
+    volumes:
+      - /path/your_icloud/cookie:/icloud_cookie
+      - /path/your_icloud/photos:/icloud_photos
+    command:
+      - download
