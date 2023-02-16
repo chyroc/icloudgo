@@ -11,7 +11,6 @@ type rawReq struct {
 	Headers      map[string]string
 	Querys       map[string]string
 	Body         any
-	To           any
 	ExpectStatus set[int]
 	Stream       bool
 }
@@ -75,10 +74,8 @@ func (r *Client) doRequest(req *rawReq) (string, io.ReadCloser, error) {
 		return text, nil, fmt.Errorf("%s %s failed, status %d, err: %s, response text: %s", req.Method, req.URL, status, err, text)
 	}
 
-	for _, mayIsErr := range []func([]byte) error{mayErr1, mayErr2, mayErr4, mayErr3} {
-		if err := mayIsErr([]byte(text)); err != nil {
-			return text, nil, fmt.Errorf("%s %s failed, status %d, err: %w", req.Method, req.URL, status, err)
-		}
+	if err := mayErr([]byte(text)); err != nil {
+		return text, nil, fmt.Errorf("%s %s failed, status %d, err: %w", req.Method, req.URL, status, err)
 	}
 
 	if req.ExpectStatus != nil && req.ExpectStatus.Len() > 0 && !req.ExpectStatus.Has(status) {

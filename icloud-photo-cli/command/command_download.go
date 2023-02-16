@@ -13,6 +13,48 @@ import (
 	"github.com/chyroc/icloudgo"
 )
 
+func NewDownloadFlag() []cli.Flag {
+	var res []cli.Flag
+	res = append(res, commonFlag...)
+	res = append(res,
+		&cli.StringFlag{
+			Name:        "output",
+			Usage:       "output dir",
+			Required:    false,
+			DefaultText: "./iCloudPhotos",
+			Aliases:     []string{"o"},
+			EnvVars:     []string{"ICLOUD_OUTPUT"},
+		},
+		&cli.StringFlag{
+			Name:     "album",
+			Usage:    "album name, if not set, download all albums",
+			Required: false,
+			Aliases:  []string{"a"},
+			EnvVars:  []string{"ICLOUD_ALBUM"},
+		},
+		&cli.Int64Flag{
+			Name:     "recent",
+			Usage:    "download recent photos, if not set, means all",
+			Required: false,
+			Aliases:  []string{"r"},
+			EnvVars:  []string{"ICLOUD_RECENT"},
+		},
+		&cli.StringFlag{
+			Name:     "duplicate",
+			Usage:    "duplicate policy, if not set, means skip",
+			Required: false,
+			Aliases:  []string{"dup"},
+			EnvVars:  []string{"ICLOUD_DUPLICATE"},
+			Action: func(context *cli.Context, s string) error {
+				if s != "skip" && s != "rename" && s != "overwrite" && s != "" {
+					return fmt.Errorf("invalid duplicate policy: %s, should be skip, rename, overwrite", s)
+				}
+				return nil
+			},
+		})
+	return res
+}
+
 func Download(c *cli.Context) error {
 	username := c.String("username")
 	cookieDir := c.String("cookie-dir")

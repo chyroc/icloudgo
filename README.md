@@ -52,3 +52,49 @@ OPTIONS:
    --duplicate value, --dup value  duplicate policy, if not set, means skip [$ICLOUD_DUPLICATE]
    --help, -h                      show help
 ```
+
+
+## Upload iCloud Photos
+
+### By Docker
+
+```shell
+docker run \
+  -e ICLOUD_USERNAME=your_icloud_username \
+  -e ICLOUD_PASSWORD=your_icloud_password \
+  -e ICLOUD_COOKIE_DIR=/icloud_cookie \
+  -e ICLOUD_DOMAIN=com \
+  -e ICLOUD_FILE=/icloud_photos/filepath \
+  -v /path/to/your/cookie:/icloud_cookie \
+  -v /path/to/your/photos:/icloud_photos \
+  ghcr.io/chyroc/icloud-photo-cli upload
+```
+
+### By Go
+
+- **Install**
+
+```shell
+go install github.com/chyroc/icloudgo/icloud-photo-cli@latest
+```
+
+- **Usage**
+
+```shell
+NAME:
+   icloud-photo-cli upload
+
+USAGE:
+   icloud-photo-cli upload [command options] [arguments...]
+
+DESCRIPTION:
+   upload photos
+
+OPTIONS:
+   --username value, -u value    apple id username [$ICLOUD_USERNAME]
+   --password value, -p value    apple id password [$ICLOUD_PASSWORD]
+   --cookie-dir value, -c value  cookie dir [$ICLOUD_COOKIE_DIR]
+   --domain value, -d value      icloud domain(com,cn) (default: com) [$ICLOUD_DOMAIN]
+   --file value, -f value        file path [$ICLOUD_FILE]
+   --help, -h                    show help
+```

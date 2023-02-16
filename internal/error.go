@@ -38,12 +38,21 @@ func IsErrorCode(err error, code string) bool {
 	return IsErrorCode(errors.Unwrap(err), code)
 }
 
+func mayErr(respText []byte) error {
+	for _, errResp := range []interface{ err() error }{new(errResp1), new(errResp2), new(errResp3), new(errResp4)} {
+		if err := json.Unmarshal(respText, errResp); err == nil && errResp.err() != nil {
+			return errResp.err()
+		}
+	}
+	return nil
+}
+
+// {"service_errors":[{"code":"-21669","title":"Incorrect verification code.","message":"Please try again."}],"hasError":true}
 type errResp1 struct {
 	ServiceErrors []struct {
-		Code              string `json:"code"`
-		Title             string `json:"title"`
-		Message           string `json:"message"`
-		SuppressDismissal bool   `json:"suppressDismissal"`
+		Code    string `json:"code"`
+		Title   string `json:"title"`
+		Message string `json:"message"`
 	} `json:"service_errors"`
 	HasError bool `json:"hasError"`
 }
@@ -69,28 +78,19 @@ func (r errResp1) err() error {
 	return nil
 }
 
-func mayErr1(respText []byte) error {
-	err := new(errResp1)
-	_ = json.Unmarshal(respText, err)
-	return err.err()
-}
-
 type errResp2 struct {
-	Success bool   `json:"success"`
-	Error   string `json:"error"`
+	Reason string `json:"reason"`
+	Error  string `json:"error"`
 }
 
 func (r errResp2) err() error {
-	if r.Success || r.Error == "" {
-		return nil
+	if r.Error != "" {
+		if r.Reason == "" {
+			return NewError("-2", r.Error)
+		}
+		return NewError("-2", r.Error+" "+r.Reason)
 	}
-	return NewError("-2", r.Error)
-}
-
-func mayErr2(respText []byte) error {
-	err := new(errResp2)
-	_ = json.Unmarshal(respText, err)
-	return err.err()
+	return nil
 }
 
 type errResp3 struct {
@@ -105,29 +105,16 @@ func (r errResp3) err() error {
 	return NewError(fmt.Sprintf("%d", r.Error), r.Reason)
 }
 
-func mayErr3(respText []byte) error {
-	err := new(errResp3)
-	_ = json.Unmarshal(respText, err)
-	return err.err()
-}
-
+// {"errors":[{"errorCode":"CLOUD_DB_FAILURE"}],"requestUUID":"fb28547f-3785-4a4f-903c-13b51aa236a9"}
 type errResp4 struct {
-	Uuid            string `json:"uuid"`
-	ServerErrorCode string `json:"serverErrorCode"`
-	Reason          string `json:"reason"`
-	ErrorClass      string `json:"errorClass"`
-	Error           string `json:"error"`
+	Errors []struct {
+		ErrorCode string `json:"errorCode"`
+	} `json:"errors"`
 }
 
 func (r errResp4) err() error {
-	if r.Reason == "" {
+	if len(r.Errors) == 0 {
 		return nil
 	}
-	return NewError("-2", r.Error+" "+r.Reason)
-}
-
-func mayErr4(respText []byte) error {
-	err := new(errResp4)
-	_ = json.Unmarshal(respText, err)
-	return err.err()
+	return NewError("-2", r.Errors[0].ErrorCode)
 }

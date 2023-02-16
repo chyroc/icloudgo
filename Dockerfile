@@ -18,4 +18,4 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 COPY --from=build /go/bin/icloud-photo-cli /bin/icloud-photo-cli
 
 ENTRYPOINT ["/bin/icloud-photo-cli"]
-CMD ["download"]
+CMD ["help"]

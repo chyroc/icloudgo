@@ -46,3 +46,14 @@ func newPhotoService(icloud *Client, serviceRoot string) (*PhotoService, error) 
 
 	return photoCli, nil
 }
+
+func (r *PhotoService) getQuerys(m map[string]string) map[string]string {
+	querys := map[string]string{}
+	for k, v := range r.querys {
+		querys[k] = v
+	}
+	for k, v := range m {
+		querys[k] = v
+	}
+	return querys
+}
