@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,6 +33,12 @@ func cleanName(s string) string {
 		}
 	}
 	return string(l)
+}
+
+func cleanFilename(s string) string {
+	ext := filepath.Ext(s)
+	base := s[:len(s)-len(ext)]
+	return cleanName(base) + ext
 }
 
 type set[T comparable] map[T]struct{}

@@ -29,11 +29,11 @@ func (r *PhotoAsset) Filename() string {
 	if v := r._masterRecord.Fields.FilenameEnc.Value; v != "" {
 		bs, _ := base64.StdEncoding.DecodeString(v)
 		if len(bs) > 0 {
-			return cleanName(string(bs))
+			return cleanFilename(string(bs))
 		}
 	}
 
-	return cleanName(r.ID())
+	return cleanFilename(r.ID())
 }
 
 func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion) string {

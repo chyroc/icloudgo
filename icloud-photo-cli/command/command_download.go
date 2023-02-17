@@ -190,7 +190,7 @@ func downloadPhotoAssetData(photo *icloudgo.PhotoAsset, target string) error {
 	}
 	defer body.Close()
 
-	f, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	f, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("open file error: %v", err)
 	}
@@ -243,6 +243,8 @@ func autoDeletePhoto(photoCli *icloudgo.PhotoService, outputDir string, threadNu
 						finalErr = err
 					}
 					return
+				} else {
+					fmt.Printf("delete %v, %v, %v, thread=%d\n", photoAsset.ID(), photoAsset.Filename(), photoAsset.FormatSize(), threadIndex)
 				}
 			}
 		}(threadIndex)
