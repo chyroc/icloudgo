@@ -47,6 +47,13 @@ func NewDownloadFlag() []cli.Flag {
 			Value:    1,
 			EnvVars:  []string{"ICLOUD_THREAD_NUM"},
 		},
+		&cli.BoolFlag{
+			Name:     "auto-delete",
+			Usage:    "auto delete photos after download",
+			Required: false,
+			Aliases:  []string{"ad"},
+			EnvVars:  []string{"ICLOUD_AUTO_DELETE"},
+		},
 	)
 	return res
 }
@@ -60,6 +67,7 @@ func Download(c *cli.Context) error {
 	recent := c.Int64("recent")
 	album := c.String("album")
 	threadNum := c.Int("thread-num")
+	autoDelete := c.Bool("auto-delete")
 
 	cli, err := icloudgo.New(&icloudgo.ClientOption{
 		AppID:           username,
@@ -85,6 +93,12 @@ func Download(c *cli.Context) error {
 
 	if err := downloadPhoto(photoCli, output, album, int(recent), threadNum); err != nil {
 		return err
+	}
+
+	if autoDelete {
+		if err := autoDeletePhoto(photoCli, threadNum); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -189,4 +203,46 @@ func downloadPhotoAssetData(photo *icloudgo.PhotoAsset, target string) error {
 	// modify_create_date
 
 	return nil
+}
+
+func autoDeletePhoto(photoCli *icloudgo.PhotoService, threadNum int) error {
+	album, err := photoCli.GetAlbum(icloudgo.AlbumNameRecentlyDeleted)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("auto delete album: %s, total: %d\n", album.Name, album.Size())
+
+	photoIter := album.PhotosIter()
+	wait := new(sync.WaitGroup)
+	var finalErr error
+	for threadIndex := 0; threadIndex < threadNum; threadIndex++ {
+		wait.Add(1)
+		go func(threadIndex int) {
+			defer wait.Done()
+
+			for {
+				photoAsset, err := photoIter.Next()
+				if err != nil {
+					if errors.Is(err, icloudgo.ErrPhotosIterateEnd) {
+						return
+					}
+					if finalErr == nil {
+						finalErr = err
+					}
+					return
+				}
+
+				if err := photoAsset.Delete(); err != nil {
+					if finalErr != nil {
+						finalErr = err
+					}
+					return
+				}
+			}
+		}(threadIndex)
+	}
+	wait.Wait()
+
+	return finalErr
 }

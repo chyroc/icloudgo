@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (r *PhotoAsset) delete() {
+func (r *PhotoAsset) Delete() error {
 	body := fmt.Sprintf(`{"operations":[{"operationType":"update","record":{"recordName":"%s","recordType":"%s","recordChangeTag":"%s","fields":{"isDeleted":{"value":1}}}}],"zoneID":{"zoneName":"PrimarySync"},"atomic":true}`,
 		r._assetRecord.RecordName,
 		r._assetRecord.RecordType,
@@ -19,4 +19,6 @@ func (r *PhotoAsset) delete() {
 		Body:    body,
 	})
 	fmt.Println(text, err)
+
+	return err
 }

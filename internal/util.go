@@ -31,7 +31,7 @@ func cleanName(s string) string {
 			l[i] = '_'
 		}
 	}
-	return s
+	return string(l)
 }
 
 type set[T comparable] map[T]struct{}
