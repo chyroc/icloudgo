@@ -1,6 +1,6 @@
 # icloudgo
 
-Access Apple iCloud via go
+Access Apple iCloud via go, go port of pyicloud.
 
 ## Download iCloud Photos
 
@@ -16,6 +16,7 @@ docker run \
   -e ICLOUD_ALBUM= \
   -e ICLOUD_RECENT=0 \
   -e ICLOUD_DUPLICATE=overwrite \
+  -e ICLOUD_THREAD_NUM=10 \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
   ghcr.io/chyroc/icloud-photo-cli download
@@ -46,10 +47,11 @@ OPTIONS:
    --password value, -p value      apple id password [$ICLOUD_PASSWORD]
    --cookie-dir value, -c value    cookie dir [$ICLOUD_COOKIE_DIR]
    --domain value, -d value        icloud domain(com,cn) (default: com) [$ICLOUD_DOMAIN]
-   --output value, -o value        output dir (default: ./iCloudPhotos) [$ICLOUD_OUTPUT]
+   --output value, -o value        output dir (default: "./iCloudPhotos") [$ICLOUD_OUTPUT]
    --album value, -a value         album name, if not set, download all albums [$ICLOUD_ALBUM]
    --recent value, -r value        download recent photos, if not set, means all (default: 0) [$ICLOUD_RECENT]
    --duplicate value, --dup value  duplicate policy, if not set, means skip [$ICLOUD_DUPLICATE]
+   --thread-num value, -t value    thread num, if not set, means 1 (default: 1) [$ICLOUD_THREAD_NUM]
    --help, -h                      show help
 ```
 

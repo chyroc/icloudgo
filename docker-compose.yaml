@@ -12,6 +12,7 @@ services:
       - ICLOUD_ALBUM=
       - ICLOUD_RECENT=0
       - ICLOUD_DUPLICATE=overwrite
+      - ICLOUD_THREAD_NUM=10
     volumes:
       - /path/your_icloud/cookie:/icloud_cookie
       - /path/your_icloud/photos:/icloud_photos
