@@ -12,6 +12,7 @@ services:
       - ICLOUD_ALBUM=
       - ICLOUD_RECENT=0
       - ICLOUD_THREAD_NUM=10
+      - ICLOUD_AUTO_DELETE=true
     volumes:
       - /path/your_icloud/cookie:/icloud_cookie
       - /path/your_icloud/photos:/icloud_photos
