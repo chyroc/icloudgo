@@ -39,5 +39,9 @@ func (r *photosIterNextImpl) Next() (*PhotoAsset, error) {
 	r.offset = r.album.calOffset(r.offset, len(assets))
 	r.end = len(assets) == 0
 
+	if r.end {
+		return nil, ErrPhotosIterateEnd
+	}
+
 	return r.assets[r.index-1], nil
 }
