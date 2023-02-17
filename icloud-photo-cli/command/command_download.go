@@ -96,7 +96,7 @@ func Download(c *cli.Context) error {
 	}
 
 	if autoDelete {
-		if err := autoDeletePhoto(photoCli, threadNum); err != nil {
+		if err := autoDeletePhoto(photoCli, output, threadNum); err != nil {
 			return err
 		}
 	}
@@ -205,7 +205,7 @@ func downloadPhotoAssetData(photo *icloudgo.PhotoAsset, target string) error {
 	return nil
 }
 
-func autoDeletePhoto(photoCli *icloudgo.PhotoService, threadNum int) error {
+func autoDeletePhoto(photoCli *icloudgo.PhotoService, outputDir string, threadNum int) error {
 	album, err := photoCli.GetAlbum(icloudgo.AlbumNameRecentlyDeleted)
 	if err != nil {
 		return err
@@ -233,7 +233,12 @@ func autoDeletePhoto(photoCli *icloudgo.PhotoService, threadNum int) error {
 					return
 				}
 
-				if err := photoAsset.Delete(); err != nil {
+				path := photoAsset.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
+
+				if err := os.Remove(path); err != nil {
+					if errors.Is(err, os.ErrNotExist) {
+						continue
+					}
 					if finalErr != nil {
 						finalErr = err
 					}

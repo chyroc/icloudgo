@@ -11,14 +11,15 @@ func (r *PhotoAsset) Delete() error {
 		r._assetRecord.RecordType,
 		r._masterRecord.RecordChangeTag,
 	)
-	text, err := r.service.icloud.request(&rawReq{
+	_, err := r.service.icloud.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     fmt.Sprintf("%s/records/modify", r.service.serviceEndpoint),
 		Querys:  r.service.querys,
 		Headers: r.service.icloud.getCommonHeaders(map[string]string{}),
 		Body:    body,
 	})
-	fmt.Println(text, err)
-
-	return err
+	if err != nil {
+		return fmt.Errorf("delete %s failed: %w", r.Filename(), err)
+	}
+	return nil
 }
