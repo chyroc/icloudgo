@@ -15,7 +15,6 @@ docker run \
   -e ICLOUD_OUTPUT=/icloud_photos \
   -e ICLOUD_ALBUM= \
   -e ICLOUD_RECENT=0 \
-  -e ICLOUD_DUPLICATE=overwrite \
   -e ICLOUD_THREAD_NUM=10 \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
@@ -50,7 +49,6 @@ OPTIONS:
    --output value, -o value        output dir (default: "./iCloudPhotos") [$ICLOUD_OUTPUT]
    --album value, -a value         album name, if not set, download all albums [$ICLOUD_ALBUM]
    --recent value, -r value        download recent photos, if not set, means all (default: 0) [$ICLOUD_RECENT]
-   --duplicate value, --dup value  duplicate policy, if not set, means skip [$ICLOUD_DUPLICATE]
    --thread-num value, -t value    thread num, if not set, means 1 (default: 1) [$ICLOUD_THREAD_NUM]
    --help, -h                      show help
 ```

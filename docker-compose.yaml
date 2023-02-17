@@ -11,7 +11,6 @@ services:
       - ICLOUD_OUTPUT=/icloud_photos
       - ICLOUD_ALBUM=
       - ICLOUD_RECENT=0
-      - ICLOUD_DUPLICATE=overwrite
       - ICLOUD_THREAD_NUM=10
     volumes:
       - /path/your_icloud/cookie:/icloud_cookie
