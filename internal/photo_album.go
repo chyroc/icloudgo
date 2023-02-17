@@ -3,7 +3,6 @@ package internal
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/chyroc/icloudgo"
 	"sync"
 )
 
@@ -58,7 +57,7 @@ func (r *PhotoService) GetAlbum(albumName string) (*PhotoAlbum, error) {
 		return nil, err
 	}
 
-	album := albums[icloudgo.AlbumNameAll]
+	album := albums[AlbumNameAll]
 	if albumName != "" {
 		var ok bool
 		album, ok = albums[albumName]

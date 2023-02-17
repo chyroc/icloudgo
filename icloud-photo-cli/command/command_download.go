@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -41,19 +39,6 @@ func NewDownloadFlag() []cli.Flag {
 			Aliases:  []string{"r"},
 			EnvVars:  []string{"ICLOUD_RECENT"},
 		},
-		&cli.StringFlag{
-			Name:     "duplicate",
-			Usage:    "duplicate policy, if not set, means skip",
-			Required: false,
-			Aliases:  []string{"dup"},
-			EnvVars:  []string{"ICLOUD_DUPLICATE"},
-			Action: func(context *cli.Context, s string) error {
-				if s != "skip" && s != "rename" && s != "overwrite" && s != "" {
-					return fmt.Errorf("invalid duplicate policy: %s, should be skip, rename, overwrite", s)
-				}
-				return nil
-			},
-		},
 		&cli.IntFlag{
 			Name:     "thread-num",
 			Usage:    "thread num, if not set, means 1",
@@ -74,7 +59,6 @@ func Download(c *cli.Context) error {
 	output := c.String("output")
 	recent := c.Int64("recent")
 	album := c.String("album")
-	duplicate := c.String("duplicate")
 	threadNum := c.Int("thread-num")
 
 	cli, err := icloudgo.New(&icloudgo.ClientOption{
@@ -99,20 +83,14 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	if err := downloadPhoto(photoCli, output, album, int(recent), duplicate, threadNum); err != nil {
+	if err := downloadPhoto(photoCli, output, album, int(recent), threadNum); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-const (
-	downloadPhotoDuplicatePolicySkip      = "skip"
-	downloadPhotoDuplicatePolicyOverwrite = "overwrite"
-	downloadPhotoDuplicatePolicyRename    = "rename"
-)
-
-func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, duplicatePolicy string, threadNum int) error {
+func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, threadNum int) error {
 	if f, _ := os.Stat(outputDir); f == nil {
 		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 			return err
@@ -124,7 +102,7 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 		return err
 	}
 
-	fmt.Printf("album: %s, total: %d, target: %s, dup policy: %v, thread-num: %d\n", album.Name, album.Size(), outputDir, duplicatePolicy, threadNum)
+	fmt.Printf("album: %s, total: %d, target: %s, thread-num: %d\n", album.Name, album.Size(), outputDir, threadNum)
 
 	if recent == 0 {
 		recent, err = album.GetSize()
@@ -158,7 +136,7 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 					return
 				}
 
-				if err := downloadPhotoAsset(photoAsset, outputDir, duplicatePolicy, threadIndex); err != nil {
+				if err := downloadPhotoAsset(photoAsset, outputDir, threadIndex); err != nil {
 					if finalErr != nil {
 						finalErr = err
 					}
@@ -174,47 +152,20 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 	return finalErr
 }
 
-func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, duplicatePolicy string, threadIndex int) error {
+func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, threadIndex int) error {
 	filename := photo.Filename()
+	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
 	fmt.Printf("start %v, %v, %v, thread=%d\n", photo.ID(), filename, photo.FormatSize(), threadIndex)
-	ext := filepath.Ext(filename)
-	filename = strings.ReplaceAll(filename, "/", "-")
-	filename = filename[:len(filename)-len(ext)]
-	path := filepath.Join(outputDir, filename+ext)
-
-	f, _ := os.Stat(path)
-	isFileDup := f != nil && photo.Size() != int(f.Size())
-	if isFileDup && duplicatePolicy == downloadPhotoDuplicatePolicyRename {
-		for i := 2; i < 10000; i++ {
-			path = filepath.Join(outputDir, fmt.Sprintf("%s(%d)%s", filename, i, ext))
-			if f, _ := os.Stat(path); f == nil {
-				break
-			}
-		}
-	}
 
 	if f, _ := os.Stat(path); f != nil {
 		if photo.Size() != int(f.Size()) {
-			switch duplicatePolicy {
-			case downloadPhotoDuplicatePolicySkip:
-				fmt.Printf("file '%s' exist, skip.\n", path)
-			case downloadPhotoDuplicatePolicyOverwrite:
-				fmt.Printf("file '%s' exist, overwrite.\n", path)
-				return downloadPhotoAssetData(photo, path)
-			case downloadPhotoDuplicatePolicyRename:
-				fmt.Printf("file '%s' exist, rename.\n", path)
-				return downloadPhotoAssetData(photo, path)
-			default:
-				return fmt.Errorf("unknown duplicate policy")
-			}
+			return downloadPhotoAssetData(photo, path)
 		} else {
 			fmt.Printf("file '%s' exist, skip.\n", path)
 		}
 	} else {
 		return downloadPhotoAssetData(photo, path)
 	}
-	//        if auto_delete:
-	//            photo.delete()
 	return nil
 }
 

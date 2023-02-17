@@ -13,6 +13,27 @@ func setIfNotEmpty[T comparable](m map[string]T, key string, val T) map[string]T
 	return m
 }
 
+var (
+	invalidChars = []rune{' ', '!', '@', '#', '$', '%', '^', '&', '(', ')', '+', '=', '[', ']', '{', '}', ';', ':', '\'', '"', ',', '.', '<', '>', '/', '?', '\\', '|'}
+	invalidChar  = map[rune]bool{}
+)
+
+func init() {
+	for _, v := range invalidChars {
+		invalidChar[v] = true
+	}
+}
+
+func cleanName(s string) string {
+	l := []rune(s)
+	for i, v := range l {
+		if invalidChar[v] {
+			l[i] = '_'
+		}
+	}
+	return s
+}
+
 type set[T comparable] map[T]struct{}
 
 func newSet[T comparable](initValue ...T) set[T] {

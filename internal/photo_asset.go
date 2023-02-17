@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"sync"
 )
 
@@ -25,8 +26,26 @@ func (r *PhotoService) newPhotoAsset(masterRecord, assetRecords *photoRecord) *P
 }
 
 func (r *PhotoAsset) Filename() string {
-	bs, _ := base64.StdEncoding.DecodeString(r._masterRecord.Fields.FilenameEnc.Value)
-	return string(bs)
+	if v := r._masterRecord.Fields.FilenameEnc.Value; v != "" {
+		bs, _ := base64.StdEncoding.DecodeString(v)
+		if len(bs) > 0 {
+			return cleanName(string(bs))
+		}
+	}
+
+	return cleanName(r.ID())
+}
+
+func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion) string {
+	filename := r.Filename()
+	ext := filepath.Ext(filename)
+	filename = filename[:len(filename)-len(ext)]
+
+	if size == PhotoVersionOriginal || size == "" {
+		return filepath.Join(outputDir, filename+ext)
+	}
+
+	return filepath.Join(outputDir, filename+"_"+string(size)+ext)
 }
 
 func (r *PhotoAsset) ID() string {
