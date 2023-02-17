@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/urfave/cli/v2"
 
@@ -93,7 +94,16 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	return downloadPhoto(cli, output, album, int(recent), duplicate, threadNum)
+	photoCli, err := cli.PhotoCli()
+	if err != nil {
+		return err
+	}
+
+	if err := downloadPhoto(photoCli, output, album, int(recent), duplicate, threadNum); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 const (
@@ -102,44 +112,22 @@ const (
 	downloadPhotoDuplicatePolicyRename    = "rename"
 )
 
-func downloadPhoto(cli *icloudgo.Client, output, albumName string, recent int, duplicate string, threadNum int) error {
-	if f, _ := os.Stat(output); f == nil {
-		if err := os.MkdirAll(output, os.ModePerm); err != nil {
+func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, duplicatePolicy string, threadNum int) error {
+	if f, _ := os.Stat(outputDir); f == nil {
+		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 			return err
 		}
 	}
 
-	photoCli, err := cli.PhotoCli()
+	album, err := photoCli.GetAlbum(albumName)
 	if err != nil {
 		return err
 	}
 
-	albums, err := photoCli.Albums()
-	if err != nil {
-		return err
-	}
-
-	album := albums[icloudgo.AlbumNameAll]
-	if albumName != "" {
-		var ok bool
-		album, ok = albums[albumName]
-		if !ok {
-			return fmt.Errorf("album %s not found", albumName)
-		}
-	}
-
-	if err = downloadPhotoAlbum(album, output, recent, duplicate, threadNum); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int, duplicatePolicy string, threadNum int) error {
 	fmt.Printf("album: %s, total: %d, target: %s, dup policy: %v, thread-num: %d\n", album.Name, album.Size(), outputDir, duplicatePolicy, threadNum)
-	var err error
-	if count == 0 {
-		count, err = album.GetSize()
+
+	if recent == 0 {
+		recent, err = album.GetSize()
 		if err != nil {
 			return err
 		}
@@ -147,6 +135,7 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 
 	photoIter := album.PhotosIter()
 	wait := new(sync.WaitGroup)
+	var downloaded int32
 	var finalErr error
 	for threadIndex := 0; threadIndex < threadNum; threadIndex++ {
 		wait.Add(1)
@@ -154,6 +143,10 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 			defer wait.Done()
 
 			for {
+				if atomic.LoadInt32(&downloaded) >= int32(recent) {
+					return
+				}
+
 				photoAsset, err := photoIter.Next()
 				if err != nil {
 					if errors.Is(err, icloudgo.ErrPhotosIterateEnd) {
@@ -171,6 +164,8 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 					}
 					return
 				}
+
+				atomic.AddInt32(&downloaded, 1)
 			}
 		}(threadIndex)
 	}

@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/chyroc/icloudgo"
 	"sync"
 )
 
@@ -49,6 +50,23 @@ func (r *PhotoService) newPhotoAlbum(name, listType, objType, direction string, 
 		_size: nil,
 		lock:  new(sync.Mutex),
 	}
+}
+
+func (r *PhotoService) GetAlbum(albumName string) (*PhotoAlbum, error) {
+	albums, err := r.Albums()
+	if err != nil {
+		return nil, err
+	}
+
+	album := albums[icloudgo.AlbumNameAll]
+	if albumName != "" {
+		var ok bool
+		album, ok = albums[albumName]
+		if !ok {
+			return nil, fmt.Errorf("album %s not found", albumName)
+		}
+	}
+	return album, nil
 }
 
 func (r *PhotoService) Albums() (map[string]*PhotoAlbum, error) {

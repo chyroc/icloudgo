@@ -15,6 +15,7 @@ type (
 	Error        = internal.Error
 	PhotoAlbum   = internal.PhotoAlbum
 	PhotoAsset   = internal.PhotoAsset
+	PhotoService = internal.PhotoService
 )
 
 var (
