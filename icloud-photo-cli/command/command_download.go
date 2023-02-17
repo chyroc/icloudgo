@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/urfave/cli/v2"
 
@@ -18,12 +19,12 @@ func NewDownloadFlag() []cli.Flag {
 	res = append(res, commonFlag...)
 	res = append(res,
 		&cli.StringFlag{
-			Name:        "output",
-			Usage:       "output dir",
-			Required:    false,
-			DefaultText: "./iCloudPhotos",
-			Aliases:     []string{"o"},
-			EnvVars:     []string{"ICLOUD_OUTPUT"},
+			Name:     "output",
+			Usage:    "output dir",
+			Required: false,
+			Value:    "./iCloudPhotos",
+			Aliases:  []string{"o"},
+			EnvVars:  []string{"ICLOUD_OUTPUT"},
 		},
 		&cli.StringFlag{
 			Name:     "album",
@@ -51,7 +52,16 @@ func NewDownloadFlag() []cli.Flag {
 				}
 				return nil
 			},
-		})
+		},
+		&cli.IntFlag{
+			Name:     "thread-num",
+			Usage:    "thread num, if not set, means 1",
+			Required: false,
+			Aliases:  []string{"t"},
+			Value:    1,
+			EnvVars:  []string{"ICLOUD_THREAD_NUM"},
+		},
+	)
 	return res
 }
 
@@ -64,6 +74,7 @@ func Download(c *cli.Context) error {
 	recent := c.Int64("recent")
 	album := c.String("album")
 	duplicate := c.String("duplicate")
+	threadNum := c.Int("thread-num")
 
 	cli, err := icloudgo.New(&icloudgo.ClientOption{
 		AppID:           username,
@@ -82,7 +93,7 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	return downloadPhoto(cli, output, album, int(recent), duplicate)
+	return downloadPhoto(cli, output, album, int(recent), duplicate, threadNum)
 }
 
 const (
@@ -91,7 +102,7 @@ const (
 	downloadPhotoDuplicatePolicyRename    = "rename"
 )
 
-func downloadPhoto(cli *icloudgo.Client, output, albumName string, recent int, duplicate string) error {
+func downloadPhoto(cli *icloudgo.Client, output, albumName string, recent int, duplicate string, threadNum int) error {
 	if f, _ := os.Stat(output); f == nil {
 		if err := os.MkdirAll(output, os.ModePerm); err != nil {
 			return err
@@ -117,15 +128,15 @@ func downloadPhoto(cli *icloudgo.Client, output, albumName string, recent int, d
 		}
 	}
 
-	if err = downloadPhotoAlbum(album, output, recent, duplicate); err != nil {
+	if err = downloadPhotoAlbum(album, output, recent, duplicate, threadNum); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int, duplicatePolicy string) error {
-	fmt.Printf("album: %s, total: %d, target: %s, dup policy: %v\n", album.Name, album.Size(), outputDir, duplicatePolicy)
+func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int, duplicatePolicy string, threadNum int) error {
+	fmt.Printf("album: %s, total: %d, target: %s, dup policy: %v, thread-num: %d\n", album.Name, album.Size(), outputDir, duplicatePolicy, threadNum)
 	var err error
 	if count == 0 {
 		count, err = album.GetSize()
@@ -135,26 +146,42 @@ func downloadPhotoAlbum(album *icloudgo.PhotoAlbum, outputDir string, count int,
 	}
 
 	photoIter := album.PhotosIter()
-	for {
-		photoAsset, err := photoIter.Next()
-		if err != nil {
-			if errors.Is(err, icloudgo.ErrPhotosIterateEnd) {
-				return nil
+	wait := new(sync.WaitGroup)
+	var finalErr error
+	for threadIndex := 0; threadIndex < threadNum; threadIndex++ {
+		wait.Add(1)
+		go func(threadIndex int) {
+			defer wait.Done()
+
+			for {
+				photoAsset, err := photoIter.Next()
+				if err != nil {
+					if errors.Is(err, icloudgo.ErrPhotosIterateEnd) {
+						return
+					}
+					if finalErr != nil {
+						finalErr = err
+					}
+					return
+				}
+
+				if err := downloadPhotoAsset(photoAsset, outputDir, duplicatePolicy, threadIndex); err != nil {
+					if finalErr != nil {
+						finalErr = err
+					}
+					return
+				}
 			}
-			return err
-		}
-
-		if err := downloadPhotoAsset(photoAsset, outputDir, duplicatePolicy); err != nil {
-			return err
-		}
+		}(threadIndex)
 	}
+	wait.Wait()
 
-	return nil
+	return finalErr
 }
 
-func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, duplicatePolicy string) error {
+func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, duplicatePolicy string, threadIndex int) error {
 	filename := photo.Filename()
-	fmt.Printf("start %v, %v, %v\n", photo.ID(), filename, photo.FormatSize())
+	fmt.Printf("start %v, %v, %v, thread=%d\n", photo.ID(), filename, photo.FormatSize(), threadIndex)
 	ext := filepath.Ext(filename)
 	filename = strings.ReplaceAll(filename, "/", "-")
 	filename = filename[:len(filename)-len(ext)]
