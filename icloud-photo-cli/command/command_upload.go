@@ -27,7 +27,7 @@ func NewUploadFlag() []cli.Flag {
 
 func Upload(c *cli.Context) error {
 	username := c.String("username")
-	password := c.String("ICLOUD_PASSWORD")
+	password := c.String("password")
 	cookieDir := c.String("cookie-dir")
 	domain := c.String("domain")
 	file := c.String("file")

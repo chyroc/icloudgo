@@ -57,7 +57,7 @@ func NewDownloadFlag() []cli.Flag {
 
 func Download(c *cli.Context) error {
 	username := c.String("username")
-	password := c.String("ICLOUD_PASSWORD")
+	password := c.String("password")
 	cookieDir := c.String("cookie-dir")
 	domain := c.String("domain")
 	output := c.String("output")
