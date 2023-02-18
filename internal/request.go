@@ -27,11 +27,7 @@ func (r *Client) requestStream(req *rawReq) (io.ReadCloser, error) {
 }
 
 func (r *Client) doRequest(req *rawReq) (string, io.ReadCloser, error) {
-	// fmt.Printf("start %s %s\n", req.Method, req.URL)
 	status := 0
-	// defer func() {
-	// 	fmt.Printf("end %s %s status=%d\n", req.Method, req.URL, status)
-	// }()
 
 	res := r.httpCli.New(req.Method, req.URL).WithURLCookie("https://icloud.com.cn")
 	if len(req.Headers) > 0 {

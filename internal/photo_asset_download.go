@@ -33,8 +33,6 @@ func (r *PhotoAsset) DownloadTo(version PhotoVersion, target string) error {
 		return fmt.Errorf("copy file error: %v", err)
 	}
 
-	fmt.Println(r._masterRecord.Created.Timestamp)
-
 	// 1676381385791 to time.time
 	created := r.Created()
 	if err := os.Chtimes(target, created, created); err != nil {
