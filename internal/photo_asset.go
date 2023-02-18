@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 type PhotoAsset struct {
@@ -58,6 +59,10 @@ func (r *PhotoAsset) Size() int {
 
 func (r *PhotoAsset) FormatSize() string {
 	return formatSize(r.Size())
+}
+
+func (r *PhotoAsset) Created() time.Time {
+	return time.UnixMilli(r._masterRecord.Created.Timestamp)
 }
 
 func formatSize(size int) string {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -14,6 +15,34 @@ const (
 	PhotoVersionMedium   PhotoVersion = "medium"
 	PhotoVersionThumb    PhotoVersion = "thumb"
 )
+
+func (r *PhotoAsset) DownloadTo(version PhotoVersion, target string) error {
+	body, err := r.Download(version)
+	if err != nil {
+		return err
+	}
+	defer body.Close()
+
+	f, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		return fmt.Errorf("open file error: %v", err)
+	}
+
+	_, err = io.Copy(f, body)
+	if err != nil {
+		return fmt.Errorf("copy file error: %v", err)
+	}
+
+	fmt.Println(r._masterRecord.Created.Timestamp)
+
+	// 1676381385791 to time.time
+	created := r.Created()
+	if err := os.Chtimes(target, created, created); err != nil {
+		return fmt.Errorf("change file time error: %v", err)
+	}
+
+	return nil
+}
 
 func (r *PhotoAsset) Download(version PhotoVersion) (io.ReadCloser, error) {
 	versionDetail, ok := r.getVersions()[version]

@@ -3,7 +3,6 @@ package command
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -173,35 +172,13 @@ func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, threadInde
 
 	if f, _ := os.Stat(path); f != nil {
 		if photo.Size() != int(f.Size()) {
-			return downloadPhotoAssetData(photo, path)
+			return photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
 		} else {
 			fmt.Printf("file '%s' exist, skip.\n", path)
 		}
 	} else {
-		return downloadPhotoAssetData(photo, path)
+		return photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
 	}
-	return nil
-}
-
-func downloadPhotoAssetData(photo *icloudgo.PhotoAsset, target string) error {
-	body, err := photo.Download(icloudgo.PhotoVersionOriginal)
-	if err != nil {
-		return err
-	}
-	defer body.Close()
-
-	f, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return fmt.Errorf("open file error: %v", err)
-	}
-
-	_, err = io.Copy(f, body)
-	if err != nil {
-		return fmt.Errorf("copy file error: %v", err)
-	}
-
-	// modify_create_date
-
 	return nil
 }
 
