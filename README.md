@@ -19,7 +19,7 @@ docker run \
   -e ICLOUD_AUTO_DELETE=true \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli download
+  ghcr.io/chyroc/icloud-photo-cli:0.5.0 download
 ```
 
 ### By Go
