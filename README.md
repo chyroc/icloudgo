@@ -62,6 +62,7 @@ OPTIONS:
 
 ```shell
 docker run \
+  -i \
   -e ICLOUD_USERNAME=your_icloud_username \
   -e ICLOUD_PASSWORD=your_icloud_password \
   -e ICLOUD_COOKIE_DIR=/icloud_cookie \
@@ -69,7 +70,7 @@ docker run \
   -e ICLOUD_FILE=/icloud_photos/filepath \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli upload
+  ghcr.io/chyroc/icloud-photo-cli:0.5.0 upload
 ```
 
 ### By Go
