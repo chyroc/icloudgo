@@ -38,6 +38,14 @@ func NewDownloadFlag() []cli.Flag {
 			Aliases:  []string{"r"},
 			EnvVars:  []string{"ICLOUD_RECENT"},
 		},
+		&cli.Int64Flag{
+			Name:     "stop-found-num",
+			Usage:    "stop download when found `stop-found-num` photos have been downloaded",
+			Required: false,
+			Value:    50,
+			Aliases:  []string{"s"},
+			EnvVars:  []string{"ICLOUD_STOP_FOUND_NUM"},
+		},
 		&cli.IntFlag{
 			Name:     "thread-num",
 			Usage:    "thread num, if not set, means 1",
@@ -64,6 +72,7 @@ func Download(c *cli.Context) error {
 	domain := c.String("domain")
 	output := c.String("output")
 	recent := c.Int64("recent")
+	stopNum := c.Int64("stop-found-num")
 	album := c.String("album")
 	threadNum := c.Int("thread-num")
 	autoDelete := c.Bool("auto-delete")
@@ -90,7 +99,7 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	if err := downloadPhoto(photoCli, output, album, int(recent), threadNum); err != nil {
+	if err := downloadPhoto(photoCli, output, album, int(recent), stopNum, threadNum); err != nil {
 		return err
 	}
 
@@ -103,7 +112,7 @@ func Download(c *cli.Context) error {
 	return nil
 }
 
-func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, threadNum int) error {
+func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, stopNum int64, threadNum int) error {
 	if f, _ := os.Stat(outputDir); f == nil {
 		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 			return err
@@ -126,6 +135,7 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 
 	photoIter := album.PhotosIter()
 	wait := new(sync.WaitGroup)
+	foundDownloadedNum := int64(0)
 	var downloaded int32
 	var finalErr error
 	for threadIndex := 0; threadIndex < threadNum; threadIndex++ {
@@ -135,6 +145,9 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 
 			for {
 				if atomic.LoadInt32(&downloaded) >= int32(recent) {
+					return
+				}
+				if atomic.LoadInt64(&foundDownloadedNum) >= stopNum {
 					return
 				}
 
@@ -149,14 +162,19 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 					return
 				}
 
-				if err := downloadPhotoAsset(photoAsset, outputDir, threadIndex); err != nil {
+				if isDownloaded, err := downloadPhotoAsset(photoAsset, outputDir, threadIndex); err != nil {
 					if finalErr != nil {
 						finalErr = err
 					}
 					return
+				} else if isDownloaded {
+					atomic.AddInt64(&foundDownloadedNum, 1)
+					if foundDownloadedNum >= stopNum {
+						return
+					}
+				} else {
+					atomic.AddInt32(&downloaded, 1)
 				}
-
-				atomic.AddInt32(&downloaded, 1)
 			}
 		}(threadIndex)
 	}
@@ -165,21 +183,21 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 	return finalErr
 }
 
-func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, threadIndex int) error {
+func downloadPhotoAsset(photo *icloudgo.PhotoAsset, outputDir string, threadIndex int) (bool, error) {
 	filename := photo.Filename()
 	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
 	fmt.Printf("start %v, %v, %v, thread=%d\n", photo.ID(), filename, photo.FormatSize(), threadIndex)
 
 	if f, _ := os.Stat(path); f != nil {
 		if photo.Size() != int(f.Size()) {
-			return photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
+			return false, photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
 		} else {
 			fmt.Printf("file '%s' exist, skip.\n", path)
+			return true, nil
 		}
 	} else {
-		return photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
+		return false, photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
 	}
-	return nil
 }
 
 func autoDeletePhoto(photoCli *icloudgo.PhotoService, outputDir string, threadNum int) error {
