@@ -17,7 +17,7 @@ type PhotoService struct {
 
 func (r *Client) PhotoCli() (*PhotoService, error) {
 	if r.photo == nil {
-		ckDatabaseWS, err := r.getWebServiceURL("ckdatabasews")
+		ckDatabaseWS, err := r.getWebServiceURL(serviceDatabase)
 		if err != nil {
 			return nil, err
 		}

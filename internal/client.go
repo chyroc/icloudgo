@@ -37,6 +37,7 @@ type Client struct {
 
 	// service
 	photo *PhotoService
+	drive *DriveService
 }
 
 type ClientOption struct {
@@ -122,6 +123,12 @@ func readFile(path string) []byte {
 	bs, _ := os.ReadFile(path)
 	return bs
 }
+
+const (
+	serviceDrive       = "drivews"
+	serviceDatabase    = "ckdatabasews"
+	serviceUploadImage = "uploadimagews"
+)
 
 func (r *Client) getWebServiceURL(key string) (string, error) {
 	if _, ok := r.Data.Webservices[key]; !ok {

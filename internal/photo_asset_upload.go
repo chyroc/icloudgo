@@ -8,7 +8,7 @@ import (
 )
 
 func (r *PhotoService) Upload(filename string, file io.Reader) (bool, error) {
-	webServiceURL, err := r.icloud.getWebServiceURL("uploadimagews")
+	webServiceURL, err := r.icloud.getWebServiceURL(serviceUploadImage)
 	if err != nil {
 		return false, err
 	}
