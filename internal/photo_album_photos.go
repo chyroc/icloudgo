@@ -3,22 +3,13 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"sync"
 )
 
-func (r *PhotoAlbum) PhotosIter() PhotosIterNext {
-	offset := 0
+func (r *PhotoAlbum) PhotosIter(startOffset int) PhotosIterNext {
 	if r.Direction == "DESCENDING" {
-		offset = r.Size() - 1
+		startOffset = r.Size() - 1 - startOffset
 	}
-	return &photosIterNextImpl{
-		album:  r,
-		lock:   new(sync.Mutex),
-		offset: offset,
-		assets: nil,
-		index:  0,
-		end:    false,
-	}
+	return newPhotosIterNext(r, startOffset)
 }
 
 func (r *PhotoAlbum) GetPhotosByOffset(offset, limit int) ([]*PhotoAsset, error) {

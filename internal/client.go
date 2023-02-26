@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/chyroc/gorequests"
 	uuid "github.com/satori/go.uuid"
@@ -57,6 +56,7 @@ func newClient(option *ClientOption) (*Client, error) {
 		twoFACodeGetter: option.TwoFACodeGetter,
 		passwordGetter:  option.PasswordGetter,
 	}
+	var err error
 
 	// domain
 	if option.Domain == "cn" {
@@ -73,21 +73,13 @@ func newClient(option *ClientOption) (*Client, error) {
 
 	// storage
 	{
-		// cookie dir
-		if option.CookieDir == "" {
-			option.CookieDir = filepath.Join(os.TempDir(), "icloudgo")
+		cli.cookieDir, err = cli.initCookieDir(option.CookieDir)
+		if err != nil {
+			return nil, err
 		}
-
-		cli.cookieDir = option.CookieDir
-		if f, _ := os.Stat(cli.cookieDir); f == nil {
-			if err := os.MkdirAll(cli.cookieDir, 0o700); err != nil {
-				return nil, fmt.Errorf("create cookie dir failed, err: %w", err)
-			}
-		}
-
-		cli.cookiePath = filepath.Join(cli.cookieDir, "cookie.json")
-		cli.clientIDPath = filepath.Join(cli.cookieDir, "client_id.txt")
-		cli.sessionDataPath = filepath.Join(cli.cookieDir, "session_data.json")
+		cli.cookiePath = cli.ConfigPath("cookie.json")
+		cli.clientIDPath = cli.ConfigPath("client_id.txt")
+		cli.sessionDataPath = cli.ConfigPath("session_data.json")
 	}
 
 	// load from file

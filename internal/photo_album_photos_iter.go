@@ -6,6 +6,18 @@ import (
 
 type PhotosIterNext interface {
 	Next() (*PhotoAsset, error)
+	Offset() int
+}
+
+func newPhotosIterNext(album *PhotoAlbum, offset int) PhotosIterNext {
+	return &photosIterNextImpl{
+		album:  album,
+		lock:   new(sync.Mutex),
+		offset: offset,
+		assets: nil,
+		index:  0,
+		end:    false,
+	}
 }
 
 type photosIterNextImpl struct {
@@ -34,6 +46,7 @@ func (r *photosIterNextImpl) Next() (*PhotoAsset, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	r.index = 1
 	r.assets = assets
 	r.offset = r.album.calOffset(r.offset, len(assets))
@@ -44,4 +57,8 @@ func (r *photosIterNextImpl) Next() (*PhotoAsset, error) {
 	}
 
 	return r.assets[r.index-1], nil
+}
+
+func (r *photosIterNextImpl) Offset() int {
+	return r.offset
 }

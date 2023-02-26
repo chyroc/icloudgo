@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -90,7 +91,7 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	if err := downloadPhoto(photoCli, params.Output, params.Album, int(params.Recent), params.StopNum, params.ThreadNum); err != nil {
+	if err := downloadPhoto(cli, photoCli, params.Output, params.Album, int(params.Recent), params.StopNum, params.ThreadNum); err != nil {
 		return err
 	}
 
@@ -129,7 +130,7 @@ func getDownloadParam(c *cli.Context) *downloadParam {
 	}
 }
 
-func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, stopNum int64, threadNum int) error {
+func downloadPhoto(cli *icloudgo.Client, photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, stopNum int64, threadNum int) error {
 	if f, _ := os.Stat(outputDir); f == nil {
 		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 			return err
@@ -141,7 +142,10 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 		return err
 	}
 
-	fmt.Printf("album: %s, total: %d, target: %s, thread-num: %d\n", album.Name, album.Size(), outputDir, threadNum)
+	downloadOffset := getDownloadOffset(cli)
+	defer saveDownloadOffset(cli, downloadOffset)
+
+	fmt.Printf("album: %s, total: %d, offset: %d, target: %s, thread-num: %d\n", album.Name, album.Size(), downloadOffset, outputDir, threadNum)
 
 	if recent == 0 {
 		recent, err = album.GetSize()
@@ -150,7 +154,7 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 		}
 	}
 
-	photoIter := album.PhotosIter()
+	photoIter := album.PhotosIter(downloadOffset)
 	wait := new(sync.WaitGroup)
 	foundDownloadedNum := int64(0)
 	var downloaded int32
@@ -164,7 +168,7 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 				if atomic.LoadInt32(&downloaded) >= int32(recent) {
 					return
 				}
-				if atomic.LoadInt64(&foundDownloadedNum) >= stopNum {
+				if stopNum > 0 && atomic.LoadInt64(&foundDownloadedNum) >= stopNum {
 					return
 				}
 
@@ -179,6 +183,11 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 					return
 				}
 
+				if offset := photoIter.Offset(); offset != downloadOffset {
+					saveDownloadOffset(cli, offset)
+					downloadOffset = offset
+				}
+
 				if isDownloaded, err := downloadPhotoAsset(photoAsset, outputDir, threadIndex); err != nil {
 					if finalErr != nil {
 						finalErr = err
@@ -186,7 +195,7 @@ func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string,
 					return
 				} else if isDownloaded {
 					atomic.AddInt64(&foundDownloadedNum, 1)
-					if foundDownloadedNum >= stopNum {
+					if stopNum > 0 && foundDownloadedNum >= stopNum {
 						return
 					}
 				} else {
@@ -225,7 +234,7 @@ func autoDeletePhoto(photoCli *icloudgo.PhotoService, outputDir string, threadNu
 
 	fmt.Printf("auto delete album: %s, total: %d\n", album.Name, album.Size())
 
-	photoIter := album.PhotosIter()
+	photoIter := album.PhotosIter(0)
 	wait := new(sync.WaitGroup)
 	var finalErr error
 	for threadIndex := 0; threadIndex < threadNum; threadIndex++ {
@@ -264,4 +273,38 @@ func autoDeletePhoto(photoCli *icloudgo.PhotoService, outputDir string, threadNu
 	wait.Wait()
 
 	return finalErr
+}
+
+const configDownloadOffset = "download_offset.txt"
+
+func getDownloadOffset(cli *icloudgo.Client) int {
+	content, err := cli.LoadConfig(configDownloadOffset)
+	if err != nil {
+		fmt.Printf("load download_offset config failed: %s, reset to 0\n", err)
+		return 0
+	} else if len(content) == 0 {
+		return 0
+	}
+
+	i, err := strconv.Atoi(string(content))
+	if err != nil {
+		fmt.Printf("load download_offset config, strconv failed: %s, reset to 0\n", err)
+		_ = cli.SaveConfig("download_offset", []byte("0"))
+		return 0
+	}
+
+	if i < 0 {
+		fmt.Printf("load download_offset config, invalid data: %d, reset to 0\n", i)
+		_ = cli.SaveConfig("download_offset", []byte("0"))
+		return 0
+	}
+
+	return i
+}
+
+func saveDownloadOffset(cli *icloudgo.Client, i int) {
+	err := cli.SaveConfig(configDownloadOffset, []byte(strconv.Itoa(i)))
+	if err != nil {
+		fmt.Printf("save download_offset config failed: %s", err)
+	}
 }
