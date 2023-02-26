@@ -72,6 +72,9 @@ func Download(c *cli.Context) error {
 	go cmd.download()
 	go cmd.autoDeletePhoto()
 
+	// hold
+	<-cmd.exit
+
 	return nil
 }
 
@@ -105,6 +108,7 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 		ThreadNum:  c.Int("thread-num"),
 		AutoDelete: c.Bool("auto-delete"),
 		lock:       &sync.Mutex{},
+		exit:       make(chan struct{}),
 	}
 	if cmd.AlbumName == "" {
 		cmd.AlbumName = icloudgo.AlbumNameAll
