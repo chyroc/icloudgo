@@ -59,9 +59,8 @@ func (r *PhotoAsset) Filename() string {
 }
 
 func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion) string {
-	filename := r.Filename()
-	ext := filepath.Ext(filename)
-	filename = filename[:len(filename)-len(ext)]
+	ext := filepath.Ext(r.Filename())
+	filename := cleanFilename(r.ID())
 
 	if size == PhotoVersionOriginal || size == "" {
 		return filepath.Join(outputDir, filename+ext)

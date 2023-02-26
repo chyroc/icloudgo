@@ -3,6 +3,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/chyroc/icloudgo"
 	"gorm.io/gorm"
@@ -49,8 +50,9 @@ func (r *downloadCommand) setDownloaded(id string) error {
 }
 
 type DownloadOffsetModel struct {
-	AlbumName string `gorm:"column:album_name; index:uniq_album_name,unique"`
-	Offset    int    `gorm:"column:offset"`
+	AlbumName string    `gorm:"column:album_name; index:uniq_album_name,unique"`
+	Offset    int       `gorm:"column:offset"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
 }
 
 func (DownloadOffsetModel) TableName() string {
@@ -69,6 +71,11 @@ func (r *downloadCommand) getDownloadOffset() int {
 		fmt.Printf("[icloudgo] [meta] get download offset err: %s, reset to 0\n", err)
 		return 0
 	}
+	if time.Now().Sub(offset.UpdatedAt) > time.Hour*24 {
+		fmt.Printf("[icloudgo] [meta] download offset is expired, reset to 0\n")
+		_ = r.saveDownloadOffset(0)
+		return 0
+	}
 	return offset.Offset
 }
 
@@ -78,5 +85,6 @@ func (r *downloadCommand) saveDownloadOffset(offset int) error {
 	return r.db.Clauses(clause.Insert{Modifier: "OR REPLACE"}).Create(&DownloadOffsetModel{
 		AlbumName: r.AlbumName,
 		Offset:    offset,
+		UpdatedAt: time.Now(),
 	}).Error
 }
