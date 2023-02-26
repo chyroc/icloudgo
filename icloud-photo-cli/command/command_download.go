@@ -35,13 +35,6 @@ func NewDownloadFlag() []cli.Flag {
 			EnvVars:  []string{"ICLOUD_ALBUM"},
 		},
 		&cli.IntFlag{
-			Name:     "offset",
-			Usage:    "download offset, if not set, means 0, or re-stored from cookie dir",
-			Required: false,
-			Value:    -1,
-			EnvVars:  []string{"ICLOUD_OFFSET"},
-		},
-		&cli.IntFlag{
 			Name:     "stop-found-num",
 			Usage:    "stop download when found `stop-found-num` photos have been downloaded",
 			Required: false,
@@ -75,12 +68,9 @@ func Download(c *cli.Context) error {
 	}
 	defer cmd.client.Close()
 
-	go cmd.savePhotoMeta(cmd.Offset)
-	cmd.download()
-
-	if cmd.AutoDelete {
-		return cmd.autoDeletePhoto()
-	}
+	go cmd.savePhotoMeta()
+	go cmd.download()
+	go cmd.autoDeletePhoto()
 
 	return nil
 }
@@ -91,7 +81,6 @@ type downloadCommand struct {
 	CookieDir  string
 	Domain     string
 	Output     string
-	Offset     int
 	StopNum    int
 	AlbumName  string
 	ThreadNum  int
@@ -111,7 +100,6 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 		CookieDir:  c.String("cookie-dir"),
 		Domain:     c.String("domain"),
 		Output:     c.String("output"),
-		Offset:     c.Int("offset"),
 		StopNum:    c.Int("stop-found-num"),
 		AlbumName:  c.String("album"),
 		ThreadNum:  c.Int("thread-num"),
@@ -156,35 +144,37 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 	cmd.client = cli
 	cmd.photoCli = photoCli
 	cmd.db = db
-	if cmd.Offset == -1 {
-		cmd.Offset = cmd.getDownloadOffset()
-	}
 
 	return cmd, nil
 }
 
-func (r *downloadCommand) savePhotoMeta(downloadOffset int) error {
+func (r *downloadCommand) savePhotoMeta() error {
 	album, err := r.photoCli.GetAlbum(r.AlbumName)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("[icloudgo] [meta] album: %s, total: %d, offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), downloadOffset, r.Output, r.ThreadNum, r.StopNum)
-	fmt.Printf("[icloudgo] [meta] start download photo meta\n")
-	err = album.WalkPhotos(downloadOffset, func(offset int, assets []*internal.PhotoAsset) error {
-		if err := r.insertAssets(assets); err != nil {
-			return err
+	for {
+		downloadOffset := r.getDownloadOffset()
+		fmt.Printf("[icloudgo] [meta] album: %s, total: %d, offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), downloadOffset, r.Output, r.ThreadNum, r.StopNum)
+		fmt.Printf("[icloudgo] [meta] start download photo meta\n")
+		err = album.WalkPhotos(downloadOffset, func(offset int, assets []*internal.PhotoAsset) error {
+			if err := r.insertAssets(assets); err != nil {
+				return err
+			}
+			if err := r.saveDownloadOffset(offset); err != nil {
+				return err
+			}
+			fmt.Printf("[icloudgo] [meta] update download offst to %d\n", offset)
+			return nil
+		})
+		if err != nil {
+			fmt.Printf("[icloudgo] [meta] walk photos err: %s\n", err)
+			time.Sleep(time.Minute)
+		} else {
+			time.Sleep(time.Hour)
 		}
-		if err := r.saveDownloadOffset(offset); err != nil {
-			return err
-		}
-		fmt.Printf("[icloudgo] [meta] update download offst to %d\n", offset)
-		return nil
-	})
-	if err != nil {
-		fmt.Printf("[icloudgo] [meta] walk photos err: %s\n", err)
 	}
-	return nil
 }
 
 func (r *downloadCommand) download() error {
@@ -194,17 +184,12 @@ func (r *downloadCommand) download() error {
 		}
 	}
 
-	if err := r.downloadFromDatabase(); err != nil {
-		fmt.Printf("[icloudgo] [download] download err: %s", err)
-	}
-
-	ticker := time.NewTicker(time.Minute)
 	for {
-		select {
-		case <-ticker.C:
-			if err := r.downloadFromDatabase(); err != nil {
-				fmt.Printf("[icloudgo] [download] download err: %s", err)
-			}
+		if err := r.downloadFromDatabase(); err != nil {
+			fmt.Printf("[icloudgo] [download] download err: %s", err)
+			time.Sleep(time.Minute)
+		} else {
+			time.Sleep(time.Hour)
 		}
 	}
 }
@@ -284,6 +269,9 @@ func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, threadI
 }
 
 func (r *downloadCommand) autoDeletePhoto() error {
+	if !r.AutoDelete {
+		return nil
+	}
 	album, err := r.photoCli.GetAlbum(icloudgo.AlbumNameRecentlyDeleted)
 	if err != nil {
 		return err
