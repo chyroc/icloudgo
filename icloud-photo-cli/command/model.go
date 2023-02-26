@@ -21,7 +21,7 @@ func (PhotoAssetModel) TableName() string {
 	return "photo_asset"
 }
 
-func (r *downloadCommand) insertAssets(assets []*icloudgo.PhotoAsset) error {
+func (r *downloadCommand) dalAddAssets(assets []*icloudgo.PhotoAsset) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	pos := []*PhotoAssetModel{}
@@ -35,7 +35,13 @@ func (r *downloadCommand) insertAssets(assets []*icloudgo.PhotoAsset) error {
 	return r.db.Clauses(clause.Insert{Modifier: "OR IGNORE"}).Create(pos).Error
 }
 
-func (r *downloadCommand) getUnDownloadAssets() ([]*PhotoAssetModel, error) {
+func (r *downloadCommand) dalDeleteAsset(id string) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	return r.db.Delete(&PhotoAssetModel{}, "id = ?", id).Error
+}
+
+func (r *downloadCommand) dalGetUnDownloadAssets() ([]*PhotoAssetModel, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	var pos []*PhotoAssetModel
@@ -43,7 +49,7 @@ func (r *downloadCommand) getUnDownloadAssets() ([]*PhotoAssetModel, error) {
 	return pos, err
 }
 
-func (r *downloadCommand) setDownloaded(id string) error {
+func (r *downloadCommand) dalSetDownloaded(id string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	return r.db.Model(&PhotoAssetModel{}).Where("id = ?", id).Update("status", 1).Error

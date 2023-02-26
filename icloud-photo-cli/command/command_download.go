@@ -54,6 +54,7 @@ func NewDownloadFlag() []cli.Flag {
 			Name:     "auto-delete",
 			Usage:    "auto delete photos after download",
 			Required: false,
+			Value:    true,
 			Aliases:  []string{"ad"},
 			EnvVars:  []string{"ICLOUD_AUTO_DELETE"},
 		},
@@ -68,7 +69,7 @@ func Download(c *cli.Context) error {
 	}
 	defer cmd.client.Close()
 
-	go cmd.savePhotoMeta()
+	go cmd.saveMeta()
 	go cmd.download()
 	go cmd.autoDeletePhoto()
 
@@ -152,7 +153,7 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 	return cmd, nil
 }
 
-func (r *downloadCommand) savePhotoMeta() error {
+func (r *downloadCommand) saveMeta() error {
 	album, err := r.photoCli.GetAlbum(r.AlbumName)
 	if err != nil {
 		return err
@@ -161,9 +162,8 @@ func (r *downloadCommand) savePhotoMeta() error {
 	for {
 		downloadOffset := r.getDownloadOffset()
 		fmt.Printf("[icloudgo] [meta] album: %s, total: %d, offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), downloadOffset, r.Output, r.ThreadNum, r.StopNum)
-		fmt.Printf("[icloudgo] [meta] start download photo meta\n")
 		err = album.WalkPhotos(downloadOffset, func(offset int, assets []*internal.PhotoAsset) error {
-			if err := r.insertAssets(assets); err != nil {
+			if err := r.dalAddAssets(assets); err != nil {
 				return err
 			}
 			if err := r.saveDownloadOffset(offset); err != nil {
@@ -199,7 +199,7 @@ func (r *downloadCommand) download() error {
 }
 
 func (r *downloadCommand) downloadFromDatabase() error {
-	assets, err := r.getUnDownloadAssets()
+	assets, err := r.dalGetUnDownloadAssets()
 	if err != nil {
 		return fmt.Errorf("get undownload assets err: %w", err)
 	} else if len(assets) == 0 {
@@ -239,13 +239,13 @@ func (r *downloadCommand) downloadFromDatabase() error {
 					atomic.AddInt32(&errCount, 1)
 					continue
 				} else if isDownloaded {
-					_ = r.setDownloaded(photoAsset.ID())
+					_ = r.dalSetDownloaded(photoAsset.ID())
 					atomic.AddInt32(&foundDownloadedNum, 1)
 					if r.StopNum > 0 && foundDownloadedNum >= int32(r.StopNum) {
 						return
 					}
 				} else {
-					_ = r.setDownloaded(assetPO.ID)
+					_ = r.dalSetDownloaded(assetPO.ID)
 					atomic.AddInt32(&downloaded, 1)
 				}
 			}
@@ -276,50 +276,34 @@ func (r *downloadCommand) autoDeletePhoto() error {
 	if !r.AutoDelete {
 		return nil
 	}
-	album, err := r.photoCli.GetAlbum(icloudgo.AlbumNameRecentlyDeleted)
-	if err != nil {
-		return err
-	}
 
-	fmt.Printf("auto delete album: %s, total: %d\n", album.Name, album.Size())
+	for {
+		album, err := r.photoCli.GetAlbum(icloudgo.AlbumNameRecentlyDeleted)
+		if err != nil {
+			time.Sleep(time.Minute)
+			continue
+		}
 
-	photoIter := album.PhotosIter(0)
-	wait := new(sync.WaitGroup)
-	var finalErr error
-	for threadIndex := 0; threadIndex < r.ThreadNum; threadIndex++ {
-		wait.Add(1)
-		go func(threadIndex int) {
-			defer wait.Done()
-
-			for {
-				photoAsset, err := photoIter.Next()
-				if err != nil {
-					if errors.Is(err, icloudgo.ErrPhotosIterateEnd) {
-						return
-					}
-					if finalErr == nil {
-						finalErr = err
-					}
-					return
+		fmt.Printf("[icloudgo] [auto_delete] auto delete album: %s, total: %d\n", album.Name, album.Size())
+		if err = album.WalkPhotos(0, func(offset int, assets []*internal.PhotoAsset) error {
+			for _, photoAsset := range assets {
+				if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
+					return err
 				}
-
 				path := photoAsset.LocalPath(r.Output, icloudgo.PhotoVersionOriginal)
-
 				if err := os.Remove(path); err != nil {
 					if errors.Is(err, os.ErrNotExist) {
 						continue
 					}
-					if finalErr != nil {
-						finalErr = err
-					}
-					return
-				} else {
-					fmt.Printf("delete %v, %v, %v, thread=%d\n", photoAsset.ID(), photoAsset.Filename(), photoAsset.FormatSize(), threadIndex)
+					return err
 				}
+				fmt.Printf("[icloudgo] [auto_delete] delete %v, %v, %v\n", photoAsset.ID(), photoAsset.Filename(), photoAsset.FormatSize())
 			}
-		}(threadIndex)
+			return nil
+		}); err != nil {
+			time.Sleep(time.Minute)
+			continue
+		}
+		time.Sleep(time.Hour)
 	}
-	wait.Wait()
-
-	return finalErr
 }
