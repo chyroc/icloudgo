@@ -2,6 +2,7 @@ package internal
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -14,6 +15,26 @@ type PhotoAsset struct {
 	_masterRecord *photoRecord
 	_assetRecord  *photoRecord
 	lock          *sync.Mutex
+}
+
+func (r *PhotoAsset) Bytes() []byte {
+	bs, _ := json.Marshal(photoAssetData{
+		MasterRecord: r._masterRecord,
+		AssetRecord:  r._assetRecord,
+	})
+	return bs
+}
+
+func (r *PhotoService) NewPhotoAssetFromBytes(bs []byte) *PhotoAsset {
+	data := &photoAssetData{}
+	_ = json.Unmarshal(bs, data)
+
+	return r.newPhotoAsset(data.MasterRecord, data.AssetRecord)
+}
+
+type photoAssetData struct {
+	MasterRecord *photoRecord `json:"master_record"`
+	AssetRecord  *photoRecord `json:"asset_record"`
 }
 
 func (r *PhotoService) newPhotoAsset(masterRecord, assetRecords *photoRecord) *PhotoAsset {

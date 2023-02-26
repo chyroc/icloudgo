@@ -77,6 +77,27 @@ func (r *PhotoAlbum) GetPhotosByCount(count int) ([]*PhotoAsset, error) {
 	return assets, nil
 }
 
+func (r *PhotoAlbum) WalkPhotos(offset int, f func(offset int, assets []*PhotoAsset) error) error {
+	if r.Direction == "DESCENDING" {
+		offset = r.Size() - 1 - offset
+	}
+	for {
+		tmp, err := r.GetPhotosByOffset(offset, 200)
+		if err != nil {
+			return err
+		}
+		if len(tmp) == 0 {
+			break
+		}
+		offset = r.calOffset(offset, len(tmp))
+
+		if err := f(offset, tmp); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *PhotoAlbum) calOffset(offset, lastAssetLen int) int {
 	if r.Direction == "DESCENDING" {
 		offset = offset - lastAssetLen
