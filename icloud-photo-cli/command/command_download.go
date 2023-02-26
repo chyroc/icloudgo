@@ -8,9 +8,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/chyroc/icloudgo"
+	"github.com/glebarez/sqlite"
+	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 )
 
 func NewDownloadFlag() []cli.Flag {
@@ -115,6 +116,7 @@ type downloadCommand struct {
 	AutoDelete bool
 
 	client *icloudgo.Client
+	db     *gorm.DB
 }
 
 func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
@@ -147,6 +149,12 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 	if cmd.Offset == -1 {
 		cmd.Offset = getDownloadOffset(cli)
 	}
+
+	db, err := gorm.Open(sqlite.Open(cli.ConfigPath("download.db")), &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+	cmd.db = db
 
 	return cmd, nil
 }
