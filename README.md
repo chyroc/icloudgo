@@ -50,11 +50,9 @@ OPTIONS:
    --domain value, -d value                            icloud domain(com,cn) (default: com) [$ICLOUD_DOMAIN]
    --output value, -o value                            output dir (default: "./iCloudPhotos") [$ICLOUD_OUTPUT]
    --album value, -a value                             album name, if not set, download all albums [$ICLOUD_ALBUM]
-   --recent value, -r value                            download recent photos, if not set, means all (default: 0) [$ICLOUD_RECENT]
-   --offset value                                      download offset, if not set, means 0, or re-stored from cookie dir (default: -1) [$ICLOUD_OFFSET]
-   --stop-found-num stop-found-num, -s stop-found-num  stop download when found stop-found-num photos have been downloaded (default: 50) [$ICLOUD_STOP_FOUND_NUM]
+   --stop-found-num stop-found-num, -s stop-found-num  stop download when found stop-found-num photos have been downloaded (default: 0) [$ICLOUD_STOP_FOUND_NUM]
    --thread-num value, -t value                        thread num, if not set, means 1 (default: 1) [$ICLOUD_THREAD_NUM]
-   --auto-delete, --ad                                 auto delete photos after download (default: false) [$ICLOUD_AUTO_DELETE]
+   --auto-delete, --ad                                 auto delete photos after download (default: true) [$ICLOUD_AUTO_DELETE]
    --help, -h                                          show help
 ```
 
