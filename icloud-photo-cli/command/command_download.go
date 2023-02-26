@@ -66,23 +66,14 @@ func NewDownloadFlag() []cli.Flag {
 }
 
 func Download(c *cli.Context) error {
-	username := c.String("username")
-	password := c.String("password")
-	cookieDir := c.String("cookie-dir")
-	domain := c.String("domain")
-	output := c.String("output")
-	recent := c.Int64("recent")
-	stopNum := c.Int64("stop-found-num")
-	album := c.String("album")
-	threadNum := c.Int("thread-num")
-	autoDelete := c.Bool("auto-delete")
+	params := getDownloadParam(c)
 
 	cli, err := icloudgo.New(&icloudgo.ClientOption{
-		AppID:           username,
-		CookieDir:       cookieDir,
-		PasswordGetter:  getTextInput("apple id password", password),
+		AppID:           params.Username,
+		CookieDir:       params.CookieDir,
+		PasswordGetter:  getTextInput("apple id password", params.Password),
 		TwoFACodeGetter: getTextInput("2fa code", ""),
-		Domain:          domain,
+		Domain:          params.Domain,
 	})
 	if err != nil {
 		return err
@@ -99,17 +90,43 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	if err := downloadPhoto(photoCli, output, album, int(recent), stopNum, threadNum); err != nil {
+	if err := downloadPhoto(photoCli, params.Output, params.Album, int(params.Recent), params.StopNum, params.ThreadNum); err != nil {
 		return err
 	}
 
-	if autoDelete {
-		if err := autoDeletePhoto(photoCli, output, threadNum); err != nil {
-			return err
-		}
+	if params.AutoDelete {
+		return autoDeletePhoto(photoCli, params.Output, params.ThreadNum)
 	}
 
 	return nil
+}
+
+type downloadParam struct {
+	Username   string
+	Password   string
+	CookieDir  string
+	Domain     string
+	Output     string
+	Recent     int64
+	StopNum    int64
+	Album      string
+	ThreadNum  int
+	AutoDelete bool
+}
+
+func getDownloadParam(c *cli.Context) *downloadParam {
+	return &downloadParam{
+		Username:   c.String("username"),
+		Password:   c.String("password"),
+		CookieDir:  c.String("cookie-dir"),
+		Domain:     c.String("domain"),
+		Output:     c.String("output"),
+		Recent:     c.Int64("recent"),
+		StopNum:    c.Int64("stop-found-num"),
+		Album:      c.String("album"),
+		ThreadNum:  c.Int("thread-num"),
+		AutoDelete: c.Bool("auto-delete"),
+	}
 }
 
 func downloadPhoto(photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, stopNum int64, threadNum int) error {

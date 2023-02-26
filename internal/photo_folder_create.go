@@ -24,7 +24,7 @@ func (r *DriveService) createDriveFolder(parentDriveID, name string) (*DriveFold
 		return nil, fmt.Errorf("createDriveFolder failed, err: %w", err)
 	}
 
-	var res = new(createDriveFolderResp)
+	res := new(createDriveFolderResp)
 	if err = json.Unmarshal([]byte(text), res); err != nil {
 		return nil, fmt.Errorf("createDriveFolder unmarshal failed, err: %w, text: %s", err, text)
 	}
