@@ -39,6 +39,13 @@ func NewDownloadFlag() []cli.Flag {
 			Aliases:  []string{"r"},
 			EnvVars:  []string{"ICLOUD_RECENT"},
 		},
+		&cli.IntFlag{
+			Name:     "offset",
+			Usage:    "download offset, if not set, means 0, or re-stored from cookie dir",
+			Required: false,
+			Value:    -1,
+			EnvVars:  []string{"ICLOUD_OFFSET"},
+		},
 		&cli.Int64Flag{
 			Name:     "stop-found-num",
 			Usage:    "stop download when found `stop-found-num` photos have been downloaded",
@@ -80,6 +87,10 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
+	if params.Offset == -1 {
+		params.Offset = getDownloadOffset(cli)
+	}
+
 	defer cli.Close()
 
 	if err := cli.Authenticate(false, nil); err != nil {
@@ -91,7 +102,7 @@ func Download(c *cli.Context) error {
 		return err
 	}
 
-	if err := downloadPhoto(cli, photoCli, params.Output, params.Album, int(params.Recent), params.StopNum, params.ThreadNum); err != nil {
+	if err := downloadPhoto(cli, photoCli, params.Output, params.Album, int(params.Recent), params.Offset, params.StopNum, params.ThreadNum); err != nil {
 		return err
 	}
 
@@ -109,6 +120,7 @@ type downloadParam struct {
 	Domain     string
 	Output     string
 	Recent     int64
+	Offset     int
 	StopNum    int64
 	Album      string
 	ThreadNum  int
@@ -122,6 +134,7 @@ func getDownloadParam(c *cli.Context) *downloadParam {
 		CookieDir:  c.String("cookie-dir"),
 		Domain:     c.String("domain"),
 		Output:     c.String("output"),
+		Offset:     c.Int("offset"),
 		Recent:     c.Int64("recent"),
 		StopNum:    c.Int64("stop-found-num"),
 		Album:      c.String("album"),
@@ -130,7 +143,7 @@ func getDownloadParam(c *cli.Context) *downloadParam {
 	}
 }
 
-func downloadPhoto(cli *icloudgo.Client, photoCli *icloudgo.PhotoService, outputDir, albumName string, recent int, stopNum int64, threadNum int) error {
+func downloadPhoto(cli *icloudgo.Client, photoCli *icloudgo.PhotoService, outputDir, albumName string, recent, downloadOffset int, stopNum int64, threadNum int) error {
 	if f, _ := os.Stat(outputDir); f == nil {
 		if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 			return err
@@ -142,9 +155,7 @@ func downloadPhoto(cli *icloudgo.Client, photoCli *icloudgo.PhotoService, output
 		return err
 	}
 
-	downloadOffset := getDownloadOffset(cli)
 	defer saveDownloadOffset(cli, downloadOffset)
-
 	fmt.Printf("album: %s, total: %d, offset: %d, target: %s, thread-num: %d\n", album.Name, album.Size(), downloadOffset, outputDir, threadNum)
 
 	if recent == 0 {

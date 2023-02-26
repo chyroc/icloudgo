@@ -20,7 +20,7 @@ docker run \
   -e ICLOUD_STOP_FOUND_NUM=50 \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.7.0 download
+  ghcr.io/chyroc/icloud-photo-cli:0.8.0 download
 ```
 
 ### By Go
@@ -51,7 +51,8 @@ OPTIONS:
    --output value, -o value                            output dir (default: "./iCloudPhotos") [$ICLOUD_OUTPUT]
    --album value, -a value                             album name, if not set, download all albums [$ICLOUD_ALBUM]
    --recent value, -r value                            download recent photos, if not set, means all (default: 0) [$ICLOUD_RECENT]
-   --stop-found-num stop-found-num, -s stop-found-num  stop download when found stop-found-num photos have been downloaded (default: 0) [$ICLOUD_STOP_FOUND_NUM]
+   --offset value                                      download offset, if not set, means 0, or re-stored from cookie dir (default: -1) [$ICLOUD_OFFSET]
+   --stop-found-num stop-found-num, -s stop-found-num  stop download when found stop-found-num photos have been downloaded (default: 50) [$ICLOUD_STOP_FOUND_NUM]
    --thread-num value, -t value                        thread num, if not set, means 1 (default: 1) [$ICLOUD_THREAD_NUM]
    --auto-delete, --ad                                 auto delete photos after download (default: false) [$ICLOUD_AUTO_DELETE]
    --help, -h                                          show help
@@ -72,7 +73,7 @@ docker run \
   -e ICLOUD_FILE=/icloud_photos/filepath \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.7.0 upload
+  ghcr.io/chyroc/icloud-photo-cli:0.8.0 upload
 ```
 
 ### By Go
