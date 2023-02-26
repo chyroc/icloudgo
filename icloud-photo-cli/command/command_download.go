@@ -74,46 +74,34 @@ func NewDownloadFlag() []cli.Flag {
 }
 
 func Download(c *cli.Context) error {
-	params := getDownloadParam(c)
-
-	cli, err := icloudgo.New(&icloudgo.ClientOption{
-		AppID:           params.Username,
-		CookieDir:       params.CookieDir,
-		PasswordGetter:  getTextInput("apple id password", params.Password),
-		TwoFACodeGetter: getTextInput("2fa code", ""),
-		Domain:          params.Domain,
-	})
+	cmd, err := newDownloadCommand(c)
 	if err != nil {
 		return err
 	}
 
-	if params.Offset == -1 {
-		params.Offset = getDownloadOffset(cli)
-	}
+	defer cmd.client.Close()
 
-	defer cli.Close()
-
-	if err := cli.Authenticate(false, nil); err != nil {
+	if err := cmd.client.Authenticate(false, nil); err != nil {
 		return err
 	}
 
-	photoCli, err := cli.PhotoCli()
+	photoCli, err := cmd.client.PhotoCli()
 	if err != nil {
 		return err
 	}
 
-	if err := downloadPhoto(cli, photoCli, params.Output, params.Album, int(params.Recent), params.Offset, params.StopNum, params.ThreadNum); err != nil {
+	if err := downloadPhoto(cmd.client, photoCli, cmd.Output, cmd.Album, int(cmd.Recent), cmd.Offset, cmd.StopNum, cmd.ThreadNum); err != nil {
 		return err
 	}
 
-	if params.AutoDelete {
-		return autoDeletePhoto(photoCli, params.Output, params.ThreadNum)
+	if cmd.AutoDelete {
+		return autoDeletePhoto(photoCli, cmd.Output, cmd.ThreadNum)
 	}
 
 	return nil
 }
 
-type downloadParam struct {
+type downloadCommand struct {
 	Username   string
 	Password   string
 	CookieDir  string
@@ -125,10 +113,12 @@ type downloadParam struct {
 	Album      string
 	ThreadNum  int
 	AutoDelete bool
+
+	client *icloudgo.Client
 }
 
-func getDownloadParam(c *cli.Context) *downloadParam {
-	return &downloadParam{
+func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
+	cmd := &downloadCommand{
 		Username:   c.String("username"),
 		Password:   c.String("password"),
 		CookieDir:  c.String("cookie-dir"),
@@ -141,6 +131,24 @@ func getDownloadParam(c *cli.Context) *downloadParam {
 		ThreadNum:  c.Int("thread-num"),
 		AutoDelete: c.Bool("auto-delete"),
 	}
+
+	cli, err := icloudgo.New(&icloudgo.ClientOption{
+		AppID:           cmd.Username,
+		CookieDir:       cmd.CookieDir,
+		PasswordGetter:  getTextInput("apple id password", cmd.Password),
+		TwoFACodeGetter: getTextInput("2fa code", ""),
+		Domain:          cmd.Domain,
+	})
+	if err != nil {
+		return nil, err
+	}
+	cmd.client = cli
+
+	if cmd.Offset == -1 {
+		cmd.Offset = getDownloadOffset(cli)
+	}
+
+	return cmd, nil
 }
 
 func downloadPhoto(cli *icloudgo.Client, photoCli *icloudgo.PhotoService, outputDir, albumName string, recent, downloadOffset int, stopNum int64, threadNum int) error {
