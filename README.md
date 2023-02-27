@@ -14,7 +14,6 @@ docker run \
   -e ICLOUD_DOMAIN=com \
   -e ICLOUD_OUTPUT=/icloud_photos \
   -e ICLOUD_ALBUM= \
-  -e ICLOUD_RECENT=0 \
   -e ICLOUD_THREAD_NUM=10 \
   -e ICLOUD_AUTO_DELETE=true \
   -e ICLOUD_STOP_FOUND_NUM=50 \
