@@ -1,6 +1,9 @@
 package command
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 func getTextInput(tip, defaultValue string) func(string) (string, error) {
 	return func(string2 string) (string, error) {
@@ -12,4 +15,13 @@ func getTextInput(tip, defaultValue string) func(string) (string, error) {
 		_, err := fmt.Scanln(&s)
 		return s, err
 	}
+}
+
+func mkdirAll(path string) error {
+	if f, _ := os.Stat(path); f == nil {
+		if err := os.MkdirAll(path, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
 }

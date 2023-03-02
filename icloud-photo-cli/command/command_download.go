@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -193,10 +194,11 @@ func (r *downloadCommand) saveMeta() error {
 }
 
 func (r *downloadCommand) download() error {
-	if f, _ := os.Stat(r.Output); f == nil {
-		if err := os.MkdirAll(r.Output, os.ModePerm); err != nil {
-			return err
-		}
+	if err := mkdirAll(r.Output); err != nil {
+		return err
+	}
+	if err := mkdirAll(filepath.Join(r.Output, ".tmp")); err != nil {
+		return err
 	}
 
 	for {
@@ -228,13 +230,14 @@ func (r *downloadCommand) downloadFromDatabase() error {
 	foundDownloadedNum := int32(0)
 	var downloaded int32
 	var errCount int32
+	var finalErr error
 	for threadIndex := 0; threadIndex < r.ThreadNum; threadIndex++ {
 		wait.Add(1)
 		go func(threadIndex int) {
 			defer wait.Done()
 			for {
 				if atomic.LoadInt32(&errCount) > 20 {
-					fmt.Printf("[icloudgo] [download] too many errors, stop download\n")
+					fmt.Printf("[icloudgo] [download] too many errors, stop download, last error: %s\n", finalErr.Error())
 					os.Exit(1)
 					return
 				}
@@ -248,6 +251,7 @@ func (r *downloadCommand) downloadFromDatabase() error {
 
 				if isDownloaded, err := r.downloadPhotoAsset(photoAsset, threadIndex); err != nil {
 					atomic.AddInt32(&errCount, 1)
+					finalErr = err
 					continue
 				} else if isDownloaded {
 					_ = r.dalSetDownloaded(photoAsset.ID())
@@ -269,23 +273,36 @@ func (r *downloadCommand) downloadFromDatabase() error {
 func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, threadIndex int) (bool, error) {
 	filename := photo.Filename()
 	outputDir := photo.OutputDir(r.Output, r.FolderStructure)
+	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal)
+	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		fmt.Printf("[icloudgo] [download] mkdir '%s' output dir: '%s' failed: %s\n", photo.Filename(), outputDir, err)
 		return false, err
 	}
-	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
 	fmt.Printf("[icloudgo] [download] %v, %v, %v, thread=%d\n", photo.ID(), filename, photo.FormatSize(), threadIndex)
 
 	if f, _ := os.Stat(path); f != nil {
 		if photo.Size() != int(f.Size()) {
-			return false, photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
+			return false, r.downloadTo(photo, tmpPath, path)
 		} else {
 			fmt.Printf("[icloudgo] [download] '%s' exist, skip.\n", path)
 			return true, nil
 		}
 	} else {
-		return false, photo.DownloadTo(icloudgo.PhotoVersionOriginal, path)
+		return false, r.downloadTo(photo, tmpPath, path)
 	}
+}
+
+func (r *downloadCommand) downloadTo(photo *icloudgo.PhotoAsset, tmpPath, realPath string) error {
+	if err := photo.DownloadTo(icloudgo.PhotoVersionOriginal, tmpPath); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tmpPath, realPath); err != nil {
+		return fmt.Errorf("rename '%s' to '%s' failed: %w", tmpPath, realPath, err)
+	}
+
+	return nil
 }
 
 func (r *downloadCommand) autoDeletePhoto() error {
