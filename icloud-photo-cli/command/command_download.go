@@ -177,7 +177,7 @@ func (r *downloadCommand) saveMeta() error {
 			if err := r.dalAddAssets(assets); err != nil {
 				return err
 			}
-			if err := r.saveDownloadOffset(offset); err != nil {
+			if err := r.saveDownloadOffset(offset, true); err != nil {
 				return err
 			}
 			fmt.Printf("[icloudgo] [meta] update download offst to %d\n", offset)
@@ -300,7 +300,7 @@ func (r *downloadCommand) autoDeletePhoto() error {
 			continue
 		}
 
-		fmt.Printf("[icloudgo] [auto_delete] auto delete album: %s, total: %d\n", album.Name, album.Size())
+		fmt.Printf("[icloudgo] [auto_delete] auto delete album total: %d\n", album.Size())
 		if err = album.WalkPhotos(0, func(offset int, assets []*internal.PhotoAsset) error {
 			for _, photoAsset := range assets {
 				if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
