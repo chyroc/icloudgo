@@ -85,6 +85,15 @@ func (r *PhotoAsset) Created() time.Time {
 	return time.UnixMilli(r._masterRecord.Created.Timestamp)
 }
 
+func (r *PhotoAsset) OutputDir(output, folderStructure string) string {
+	if folderStructure == "" || folderStructure == "/" {
+		return output
+	}
+
+	createdFolderName := r.Created().Format(folderStructure)
+	return filepath.Join(output, createdFolderName)
+}
+
 func formatSize(size int) string {
 	if size < 1024 {
 		return fmt.Sprintf("%dB", size)

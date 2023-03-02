@@ -8,11 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/chyroc/icloudgo"
-	"github.com/chyroc/icloudgo/internal"
 	"github.com/glebarez/sqlite"
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
+
+	"github.com/chyroc/icloudgo"
+	"github.com/chyroc/icloudgo/internal"
 )
 
 func NewDownloadFlag() []cli.Flag {
@@ -33,6 +34,14 @@ func NewDownloadFlag() []cli.Flag {
 			Required: false,
 			Aliases:  []string{"a"},
 			EnvVars:  []string{"ICLOUD_ALBUM"},
+		},
+		&cli.StringFlag{
+			Name:     "folder-structure",
+			Usage:    "support: `2006`(year), `01`(month), `02`(day), `15`(24-hour), `03`(12-hour), `04`(minute), `05`(second), example: `2006/01/02`, default is `/`",
+			Required: false,
+			Value:    "/",
+			Aliases:  []string{"fs"},
+			EnvVars:  []string{"ICLOUD_FOLDER_STRUCTURE"},
 		},
 		&cli.IntFlag{
 			Name:     "stop-found-num",
@@ -80,15 +89,16 @@ func Download(c *cli.Context) error {
 }
 
 type downloadCommand struct {
-	Username   string
-	Password   string
-	CookieDir  string
-	Domain     string
-	Output     string
-	StopNum    int
-	AlbumName  string
-	ThreadNum  int
-	AutoDelete bool
+	Username        string
+	Password        string
+	CookieDir       string
+	Domain          string
+	Output          string
+	StopNum         int
+	AlbumName       string
+	ThreadNum       int
+	AutoDelete      bool
+	FolderStructure string
 
 	client   *icloudgo.Client
 	photoCli *icloudgo.PhotoService
@@ -99,17 +109,18 @@ type downloadCommand struct {
 
 func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 	cmd := &downloadCommand{
-		Username:   c.String("username"),
-		Password:   c.String("password"),
-		CookieDir:  c.String("cookie-dir"),
-		Domain:     c.String("domain"),
-		Output:     c.String("output"),
-		StopNum:    c.Int("stop-found-num"),
-		AlbumName:  c.String("album"),
-		ThreadNum:  c.Int("thread-num"),
-		AutoDelete: c.Bool("auto-delete"),
-		lock:       &sync.Mutex{},
-		exit:       make(chan struct{}),
+		Username:        c.String("username"),
+		Password:        c.String("password"),
+		CookieDir:       c.String("cookie-dir"),
+		Domain:          c.String("domain"),
+		Output:          c.String("output"),
+		StopNum:         c.Int("stop-found-num"),
+		AlbumName:       c.String("album"),
+		ThreadNum:       c.Int("thread-num"),
+		AutoDelete:      c.Bool("auto-delete"),
+		FolderStructure: c.String("folder-structure"),
+		lock:            &sync.Mutex{},
+		exit:            make(chan struct{}),
 	}
 	if cmd.AlbumName == "" {
 		cmd.AlbumName = icloudgo.AlbumNameAll
@@ -257,7 +268,12 @@ func (r *downloadCommand) downloadFromDatabase() error {
 
 func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, threadIndex int) (bool, error) {
 	filename := photo.Filename()
-	path := photo.LocalPath(r.Output, icloudgo.PhotoVersionOriginal)
+	outputDir := photo.OutputDir(r.Output, r.FolderStructure)
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		fmt.Printf("[icloudgo] [download] mkdir '%s' output dir: '%s' failed: %s\n", photo.Filename(), outputDir, err)
+		return false, err
+	}
+	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
 	fmt.Printf("[icloudgo] [download] %v, %v, %v, thread=%d\n", photo.ID(), filename, photo.FormatSize(), threadIndex)
 
 	if f, _ := os.Stat(path); f != nil {
@@ -290,7 +306,7 @@ func (r *downloadCommand) autoDeletePhoto() error {
 				if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
 					return err
 				}
-				path := photoAsset.LocalPath(r.Output, icloudgo.PhotoVersionOriginal)
+				path := photoAsset.LocalPath(photoAsset.OutputDir(r.Output, r.FolderStructure), icloudgo.PhotoVersionOriginal)
 				if err := os.Remove(path); err != nil {
 					if errors.Is(err, os.ErrNotExist) {
 						continue
