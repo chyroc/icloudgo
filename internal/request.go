@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"io"
+	"net/http"
 )
 
 type rawReq struct {
@@ -54,6 +55,9 @@ func (r *Client) doRequest(req *rawReq) (string, io.ReadCloser, error) {
 	}
 
 	status = res.MustResponseStatus()
+	if status == http.StatusGone {
+		return "", nil, fmt.Errorf("%s %s failed, %w", req.Method, req.URL, ErrResourceGone)
+	}
 
 	if req.Stream {
 		if respErr != nil {

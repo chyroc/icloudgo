@@ -250,6 +250,9 @@ func (r *downloadCommand) downloadFromDatabase() error {
 				photoAsset := r.photoCli.NewPhotoAssetFromBytes([]byte(assetPO.Data))
 
 				if isDownloaded, err := r.downloadPhotoAsset(photoAsset, threadIndex); err != nil {
+					if errors.Is(err, internal.ErrResourceGone) {
+						continue
+					}
 					atomic.AddInt32(&errCount, 1)
 					finalErr = err
 					continue

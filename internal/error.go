@@ -10,15 +10,25 @@ import (
 var (
 	ErrValidateCodeWrong = NewError("-21669", "validate code wrong")
 	ErrPhotosIterateEnd  = NewError("photos_iterate_end", "photos iterate end")
+	ErrResourceGone      = NewHttpError(410, "resource gone")
 )
 
 type Error struct {
-	Code    string
-	Message string
+	HttpStatus int
+	Code       string
+	Message    string
 }
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+}
+
+func NewHttpError(httpStatus int, body string) *Error {
+	return &Error{
+		HttpStatus: httpStatus,
+		Code:       fmt.Sprintf("http_%d", httpStatus),
+		Message:    body,
+	}
 }
 
 func NewError(code string, message string) *Error {

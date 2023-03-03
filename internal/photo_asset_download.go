@@ -18,10 +18,12 @@ const (
 
 func (r *PhotoAsset) DownloadTo(version PhotoVersion, target string) error {
 	body, err := r.Download(version)
+	if body != nil {
+		defer body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer body.Close()
 
 	f, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
@@ -53,12 +55,13 @@ func (r *PhotoAsset) Download(version PhotoVersion) (io.ReadCloser, error) {
 	}
 
 	body, err := r.service.icloud.requestStream(&rawReq{
-		Method:  http.MethodGet,
-		URL:     versionDetail.URL,
-		Headers: r.service.icloud.getCommonHeaders(map[string]string{}),
+		Method:       http.MethodGet,
+		URL:          versionDetail.URL,
+		Headers:      r.service.icloud.getCommonHeaders(map[string]string{}),
+		ExpectStatus: newSet[int](http.StatusOK),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("download %s failed: %w", r.Filename(), err)
+		return body, fmt.Errorf("download %s failed: %w", r.Filename(), err)
 	}
 	return body, nil
 }
