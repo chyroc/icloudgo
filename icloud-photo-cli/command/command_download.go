@@ -44,6 +44,13 @@ func NewDownloadFlag() []cli.Flag {
 			Aliases:  []string{"fs"},
 			EnvVars:  []string{"ICLOUD_FOLDER_STRUCTURE"},
 		},
+		&cli.StringFlag{
+			Name:     "file-structure",
+			Usage:    "support: id(unique file id), name(file human readable name)",
+			Required: false,
+			Value:    "id",
+			EnvVars:  []string{"ICLOUD_FILE_STRUCTURE"},
+		},
 		&cli.IntFlag{
 			Name:     "stop-found-num",
 			Usage:    "stop download when found `stop-found-num` photos have been downloaded",
@@ -100,6 +107,7 @@ type downloadCommand struct {
 	ThreadNum       int
 	AutoDelete      bool
 	FolderStructure string
+	FileStructure   string
 
 	client   *icloudgo.Client
 	photoCli *icloudgo.PhotoService
@@ -120,6 +128,7 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 		ThreadNum:       c.Int("thread-num"),
 		AutoDelete:      c.Bool("auto-delete"),
 		FolderStructure: c.String("folder-structure"),
+		FileStructure:   c.String("file-structure"),
 		lock:            &sync.Mutex{},
 		exit:            make(chan struct{}),
 	}
@@ -276,8 +285,8 @@ func (r *downloadCommand) downloadFromDatabase() error {
 func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, threadIndex int) (bool, error) {
 	filename := photo.Filename()
 	outputDir := photo.OutputDir(r.Output, r.FolderStructure)
-	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal)
-	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal)
+	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal, r.FileStructure)
+	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal, r.FileStructure)
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		fmt.Printf("[icloudgo] [download] mkdir '%s' output dir: '%s' failed: %s\n", photo.Filename(), outputDir, err)
 		return false, err
@@ -326,7 +335,7 @@ func (r *downloadCommand) autoDeletePhoto() error {
 				if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
 					return err
 				}
-				path := photoAsset.LocalPath(photoAsset.OutputDir(r.Output, r.FolderStructure), icloudgo.PhotoVersionOriginal)
+				path := photoAsset.LocalPath(photoAsset.OutputDir(r.Output, r.FolderStructure), icloudgo.PhotoVersionOriginal, r.FileStructure)
 				if err := os.Remove(path); err != nil {
 					if errors.Is(err, os.ErrNotExist) {
 						continue

@@ -58,9 +58,15 @@ func (r *PhotoAsset) Filename() string {
 	return cleanFilename(r.ID())
 }
 
-func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion) string {
+func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion, fileStructure string) string {
 	ext := filepath.Ext(r.Filename())
-	filename := cleanFilename(r.ID())
+	filename := ""
+	switch fileStructure {
+	case "name":
+		filename = cleanFilename(r.Filename())
+	default:
+		filename = cleanFilename(r.ID())
+	}
 
 	if size == PhotoVersionOriginal || size == "" {
 		return filepath.Join(outputDir, filename+ext)
