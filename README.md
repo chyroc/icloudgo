@@ -50,6 +50,7 @@ OPTIONS:
    --output value, -o value                            output dir (default: "./iCloudPhotos") [$ICLOUD_OUTPUT]
    --album value, -a value                             album name, if not set, download all albums [$ICLOUD_ALBUM]
    --folder-structure 2006, --fs 2006                  folder structure, support: 2006(year), `01`(month), `02`(day), `15`(24-hour), `03`(12-hour), `04`(minute), `05`(second), example: `2006/01/02`, default is `/` [$ICLOUD_FOLDER_STRUCTURE]
+   --file-structure value                              support: id(unique file id), name(file human readable name) (default: "id") [$ICLOUD_FILE_STRUCTURE]
    --stop-found-num stop-found-num, -s stop-found-num  stop download when found stop-found-num photos have been downloaded (default: 0) [$ICLOUD_STOP_FOUND_NUM]
    --thread-num value, -t value                        thread num, if not set, means 1 (default: 1) [$ICLOUD_THREAD_NUM]
    --auto-delete, --ad                                 auto delete photos after download (default: true) [$ICLOUD_AUTO_DELETE]
