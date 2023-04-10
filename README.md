@@ -19,7 +19,7 @@ docker run \
   -e ICLOUD_STOP_FOUND_NUM=50 \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.12.0 download
+  ghcr.io/chyroc/icloud-photo-cli:0.13.0 download
 ```
 
 ### By Go
@@ -72,7 +72,7 @@ docker run \
   -e ICLOUD_FILE=/icloud_photos/filepath \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.12.0 upload
+  ghcr.io/chyroc/icloud-photo-cli:0.13.0 upload
 ```
 
 ### By Go
