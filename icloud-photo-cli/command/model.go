@@ -65,7 +65,7 @@ func (DownloadOffsetModel) TableName() string {
 	return "download_offset"
 }
 
-func (r *downloadCommand) getDownloadOffset() int {
+func (r *downloadCommand) getDownloadOffset(albumSize int) int {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	var offset DownloadOffsetModel
@@ -79,6 +79,11 @@ func (r *downloadCommand) getDownloadOffset() int {
 	}
 	if time.Now().Sub(offset.UpdatedAt) > time.Hour*24 {
 		fmt.Printf("[icloudgo] [meta] download offset is expired, reset to 0\n")
+		_ = r.saveDownloadOffset(0, false)
+		return 0
+	}
+	if offset.Offset >= albumSize {
+		fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0\n", offset.Offset, albumSize)
 		_ = r.saveDownloadOffset(0, false)
 		return 0
 	}

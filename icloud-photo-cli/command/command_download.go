@@ -181,7 +181,7 @@ func (r *downloadCommand) saveMeta() error {
 	}
 
 	for {
-		downloadOffset := r.getDownloadOffset()
+		downloadOffset := r.getDownloadOffset(album.Size())
 		fmt.Printf("[icloudgo] [meta] album: %s, total: %d, offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), downloadOffset, r.Output, r.ThreadNum, r.StopNum)
 		err = album.WalkPhotos(downloadOffset, func(offset int, assets []*internal.PhotoAsset) error {
 			if err := r.dalAddAssets(assets); err != nil {
