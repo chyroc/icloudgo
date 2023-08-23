@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   app:
-    image: ghcr.io/chyroc/icloud-photo-cli:0.14.0
+    image: ghcr.io/chyroc/icloud-photo-cli:0.15.0
     environment:
       - ICLOUD_USERNAME=your_icloud_username
       - ICLOUD_PASSWORD=your_icloud_password
