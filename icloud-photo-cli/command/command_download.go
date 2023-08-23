@@ -241,6 +241,14 @@ func (r *downloadCommand) downloadFromDatabase() error {
 	var downloaded int32
 	var errCount int32
 	var finalErr error
+	var addError = func(msg string, err error) {
+		if err == nil {
+			return
+		}
+		atomic.AddInt32(&errCount, 1)
+		finalErr = err
+		fmt.Printf("[icloudgo] [download] %s failed: %s\n", msg, err.Error())
+	}
 	for threadIndex := 0; threadIndex < r.ThreadNum; threadIndex++ {
 		wait.Add(1)
 		go func(threadIndex int) {
@@ -263,17 +271,22 @@ func (r *downloadCommand) downloadFromDatabase() error {
 					if errors.Is(err, internal.ErrResourceGone) {
 						continue
 					}
-					atomic.AddInt32(&errCount, 1)
-					finalErr = err
+					addError("downloadPhotoAsset", err)
 					continue
 				} else if isDownloaded {
-					_ = r.dalSetDownloaded(photoAsset.ID())
+					if err = r.dalSetDownloaded(photoAsset.ID()); err != nil {
+						addError("dalSetDownloaded[downloaded]", err)
+						continue
+					}
 					atomic.AddInt32(&foundDownloadedNum, 1)
 					if r.StopNum > 0 && foundDownloadedNum >= int32(r.StopNum) {
 						return
 					}
 				} else {
-					_ = r.dalSetDownloaded(assetPO.ID)
+					if err = r.dalSetDownloaded(assetPO.ID); err != nil {
+						addError("dalSetDownloaded[download]", err)
+						continue
+					}
 					atomic.AddInt32(&downloaded, 1)
 				}
 			}

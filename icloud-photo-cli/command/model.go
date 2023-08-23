@@ -78,13 +78,19 @@ func (r *downloadCommand) getDownloadOffset(albumSize int) int {
 		return 0
 	}
 	if time.Now().Sub(offset.UpdatedAt) > time.Hour*24 {
-		fmt.Printf("[icloudgo] [meta] download offset is expired, reset to 0\n")
-		_ = r.saveDownloadOffset(0, false)
+		if err = r.saveDownloadOffset(0, false); err != nil {
+			fmt.Printf("[icloudgo] [meta] download offset is expired, reset to 0, and saveDownloadOffset failed: %s\n", err)
+		} else {
+			fmt.Printf("[icloudgo] [meta] download offset is expired, reset to 0\n")
+		}
 		return 0
 	}
 	if offset.Offset >= albumSize {
-		fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0\n", offset.Offset, albumSize)
-		_ = r.saveDownloadOffset(0, false)
+		if err = r.saveDownloadOffset(0, false); err != nil {
+			fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0, and saveDownloadOffset failed: %s\n", offset.Offset, albumSize, err)
+		} else {
+			fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0\n", offset.Offset, albumSize)
+		}
 		return 0
 	}
 	return offset.Offset
