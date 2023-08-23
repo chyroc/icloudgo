@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 type rawReq struct {
@@ -14,6 +15,7 @@ type rawReq struct {
 	Body         any
 	ExpectStatus set[int]
 	Stream       bool
+	Timeout      time.Duration
 }
 
 func (r *Client) request(req *rawReq) (string, error) {
@@ -43,6 +45,9 @@ func (r *Client) doRequest(req *rawReq) (string, io.ReadCloser, error) {
 		} else {
 			res = res.WithJSON(req.Body)
 		}
+	}
+	if req.Timeout > 0 {
+		res = res.WithTimeout(req.Timeout)
 	}
 
 	resp, respErr := res.Response()

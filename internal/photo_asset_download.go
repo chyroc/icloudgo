@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 type PhotoVersion string
@@ -54,14 +55,23 @@ func (r *PhotoAsset) Download(version PhotoVersion) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("version %s not found, valid: %s", version, strings.Join(keys, ","))
 	}
 
+	timeout := time.Minute * 10 // 10分钟
+	if versionDetail.Size > 0 {
+		slowSecond := time.Duration(versionDetail.Size/1024/100) * time.Second // 100 KB/s 秒
+		if slowSecond > timeout {
+			timeout = slowSecond
+		}
+	}
+
 	body, err := r.service.icloud.requestStream(&rawReq{
 		Method:       http.MethodGet,
 		URL:          versionDetail.URL,
 		Headers:      r.service.icloud.getCommonHeaders(map[string]string{}),
 		ExpectStatus: newSet[int](http.StatusOK),
+		Timeout:      timeout,
 	})
 	if err != nil {
-		return body, fmt.Errorf("download %s failed: %w", r.Filename(), err)
+		return body, fmt.Errorf("download %s(timeout: %s) failed: %w", r.Filename(), timeout, err)
 	}
 	return body, nil
 }

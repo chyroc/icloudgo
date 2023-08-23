@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -306,8 +307,14 @@ func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, threadI
 }
 
 func (r *downloadCommand) downloadTo(photo *icloudgo.PhotoAsset, tmpPath, realPath string) error {
-	if err := photo.DownloadTo(icloudgo.PhotoVersionOriginal, tmpPath); err != nil {
-		return err
+	retry := 5
+	for i := 0; i < retry; i++ {
+		if err := photo.DownloadTo(icloudgo.PhotoVersionOriginal, tmpPath); err != nil {
+			if strings.Contains(err.Error(), "i/o timeout") && i < retry-1 {
+				continue
+			}
+			return err
+		}
 	}
 
 	if err := os.Rename(tmpPath, realPath); err != nil {
