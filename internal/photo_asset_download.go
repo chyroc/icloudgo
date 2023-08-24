@@ -27,6 +27,9 @@ func (r *PhotoAsset) DownloadTo(version PhotoVersion, target string) error {
 	}
 
 	f, err := os.OpenFile(target, os.O_RDWR|os.O_CREATE, 0o644)
+	if f != nil {
+		defer f.Close()
+	}
 	if err != nil {
 		return fmt.Errorf("open file error: %v", err)
 	}
