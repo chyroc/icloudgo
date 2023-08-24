@@ -157,7 +157,7 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 		return nil, err
 	}
 
-	dbPath := cli.ConfigPath("download.db")
+	dbPath := cli.ConfigPath("badger.db")
 	db, err := badger.Open(badger.DefaultOptions(dbPath))
 	if err != nil {
 		return nil, err
