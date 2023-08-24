@@ -126,7 +126,7 @@ func (r *downloadCommand) dalGetDownloadOffset(albumSize int) int {
 			fmt.Printf("[icloudgo] [meta] get download offset err: %s, reset to 0\n", err)
 			return nil
 		}
-		if offset >= albumSize {
+		if offset > albumSize {
 			result = 0
 			if err = r.saveDownloadOffset(txn, 0, false); err != nil {
 				fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0, and saveDownloadOffset failed: %s\n", offset, albumSize, err)
