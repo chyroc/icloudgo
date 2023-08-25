@@ -474,7 +474,7 @@ func newAssertQueue(data []*icloudgo.PhotoAsset) *assertQueue {
 		recentIndex:  -1,
 		oldAssets:    oldAssets,
 		lowIndex:     -1,
-		highIndex:    len(data),
+		highIndex:    len(oldAssets),
 		lock:         new(sync.Mutex),
 	}
 }
