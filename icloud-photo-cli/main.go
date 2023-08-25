@@ -28,6 +28,13 @@ func main() {
 				Flags:       command.NewUploadFlag(),
 				Action:      command.Upload,
 			},
+			{
+				Name:        "list-db",
+				Aliases:     []string{"ld"},
+				Description: "list database datas",
+				Flags:       command.NewListDBFlag(),
+				Action:      command.ListDB,
+			},
 		},
 	}
 	if err := app.Run(os.Args); err != nil {

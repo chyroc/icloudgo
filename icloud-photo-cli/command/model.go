@@ -55,7 +55,7 @@ func (r *downloadCommand) dalDeleteAsset(id string) error {
 	})
 }
 
-func (r *downloadCommand) dalGetUnDownloadAssets() ([]*PhotoAssetModel, error) {
+func (r *downloadCommand) dalGetUnDownloadAssets(status *int) ([]*PhotoAssetModel, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -72,7 +72,9 @@ func (r *downloadCommand) dalGetUnDownloadAssets() ([]*PhotoAssetModel, error) {
 			if err != nil {
 				return err
 			}
-			if po.Status == 0 {
+			if status == nil {
+				pos = append(pos, po)
+			} else if po.Status == *status {
 				pos = append(pos, po)
 			}
 		}
@@ -123,15 +125,16 @@ func (r *downloadCommand) dalGetDownloadOffset(albumSize int) int {
 			if errors.Is(err, badger.ErrKeyNotFound) {
 				return nil
 			}
-			fmt.Printf("[icloudgo] [meta] get download offset err: %s, reset to 0\n", err)
+			fmt.Printf("[icloudgo] [offset] get db offset err: %s, reset to 0\n", err)
 			return nil
 		}
+		fmt.Printf("[icloudgo] [offset] get db offset: %d\n", offset)
 		if offset > albumSize {
 			result = 0
 			if err = r.saveDownloadOffset(txn, 0, false); err != nil {
-				fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0, and saveDownloadOffset failed: %s\n", offset, albumSize, err)
+				fmt.Printf("[icloudgo] [offset] db offset=%d, album_size=%d, reset to 0, and save_db failed: %s\n", offset, albumSize, err)
 			} else {
-				fmt.Printf("[icloudgo] [meta] download offset=%d, album size=%d, reset to 0\n", offset, albumSize)
+				fmt.Printf("[icloudgo] [offset] db offset=%d, album_size=%d, reset to 0\n", offset, albumSize)
 			}
 		}
 		result = offset

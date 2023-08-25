@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -170,16 +171,21 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 	return cmd, nil
 }
 
-func (r *downloadCommand) saveMeta() error {
+func (r *downloadCommand) saveMeta() (err error) {
+	defer func() {
+		if err != nil {
+			fmt.Printf("[icloudgo] [meta] final err:%s\n", err.Error())
+		}
+	}()
 	album, err := r.photoCli.GetAlbum(r.AlbumName)
 	if err != nil {
 		return err
 	}
 
 	for {
-		downloadOffset := r.dalGetDownloadOffset(album.Size())
-		fmt.Printf("[icloudgo] [meta] album: %s, total: %d, offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), downloadOffset, r.Output, r.ThreadNum, r.StopNum)
-		err = album.WalkPhotos(downloadOffset, func(offset int, assets []*internal.PhotoAsset) error {
+		dbOffset := r.dalGetDownloadOffset(album.Size())
+		fmt.Printf("[icloudgo] [meta] album: %s, total: %d, db_offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), dbOffset, r.Output, r.ThreadNum, r.StopNum)
+		err = album.WalkPhotos(dbOffset, func(offset int, assets []*internal.PhotoAsset) error {
 			if err := r.dalAddAssets(assets); err != nil {
 				return err
 			}
@@ -208,7 +214,12 @@ func (r *downloadCommand) setStartDownload() {
 	}
 }
 
-func (r *downloadCommand) download() error {
+func (r *downloadCommand) download() (err error) {
+	defer func() {
+		if err != nil {
+			fmt.Printf("[icloudgo] [download] final err:%s\n", err.Error())
+		}
+	}()
 	if err := mkdirAll(r.Output); err != nil {
 		return err
 	}
@@ -216,14 +227,17 @@ func (r *downloadCommand) download() error {
 		return err
 	}
 
+	fmt.Printf("[icloudgo] [download] start\n")
 	short := time.Minute
 	long := time.Hour
-	timer := time.NewTimer(short)
+	timer := time.NewTimer(time.Second / 10) // 立刻开始
 	download := func() {
+		fmt.Printf("[icloudgo] [download] start run %s\n", time.Now())
 		if err := r.downloadFromDatabase(); err != nil {
-			fmt.Printf("[icloudgo] [download] download err: %s", err)
+			fmt.Printf("[icloudgo] [download] download err: %s, sleep %s", err, short)
 			timer.Reset(short)
 		} else {
+			fmt.Printf("[icloudgo] [download] download success, sleep %s", long)
 			timer.Reset(long)
 		}
 	}
@@ -238,26 +252,21 @@ func (r *downloadCommand) download() error {
 }
 
 func (r *downloadCommand) downloadFromDatabase() error {
-	assets, err := r.dalGetUnDownloadAssets()
+	assetQueue, err := r.getUnDownloadAssets()
 	if err != nil {
 		return fmt.Errorf("get undownload assets err: %w", err)
-	} else if len(assets) == 0 {
+	} else if assetQueue.empty() {
 		fmt.Printf("[icloudgo] [download] no undownload assets\n")
 		return nil
 	}
-	fmt.Printf("[icloudgo] [download] found %d undownload assets\n", len(assets))
-
-	assetPOChan := make(chan *PhotoAssetModel, len(assets))
-	for _, asset := range assets {
-		assetPOChan <- asset
-	}
+	fmt.Printf("[icloudgo] [download] found %d undownload assets\n", assetQueue.len())
 
 	wait := new(sync.WaitGroup)
 	foundDownloadedNum := int32(0)
 	var downloaded int32
 	var errCount int32
 	var finalErr error
-	var addError = func(msg string, err error) {
+	addError := func(msg string, err error) {
 		if err == nil {
 			return
 		}
@@ -280,10 +289,12 @@ func (r *downloadCommand) downloadFromDatabase() error {
 					return
 				}
 
-				assetPO := <-assetPOChan
-				photoAsset := r.photoCli.NewPhotoAssetFromBytes([]byte(assetPO.Data))
+				photoAsset, pickReason := assetQueue.pick(float32(threadIndex) / float32(r.ThreadNum))
+				if photoAsset == nil {
+					return
+				}
 
-				if isDownloaded, err := r.downloadPhotoAsset(photoAsset, threadIndex); err != nil {
+				if isDownloaded, err := r.downloadPhotoAsset(photoAsset, pickReason); err != nil {
 					if errors.Is(err, internal.ErrResourceGone) || strings.Contains(err.Error(), "no such host") {
 						// delete db
 						if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
@@ -303,7 +314,7 @@ func (r *downloadCommand) downloadFromDatabase() error {
 						return
 					}
 				} else {
-					if err = r.dalSetDownloaded(assetPO.ID); err != nil {
+					if err = r.dalSetDownloaded(photoAsset.ID()); err != nil {
 						addError("dalSetDownloaded[download]", err)
 						continue
 					}
@@ -316,36 +327,38 @@ func (r *downloadCommand) downloadFromDatabase() error {
 	return nil
 }
 
-func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, threadIndex int) (bool, error) {
+func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, pickReason string) (bool, error) {
 	outputDir := photo.OutputDir(r.Output, r.FolderStructure)
 	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal, r.FileStructure)
 	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal, r.FileStructure)
+	name := path[len(r.Output):]
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
-		fmt.Printf("[icloudgo] [download] mkdir '%s' output dir: '%s' failed: %s\n", photo.Filename(), outputDir, err)
+		fmt.Printf("[icloudgo] [download] [%s] mkdir '%s' output dir: '%s' failed: %s\n", pickReason, photo.Filename(), outputDir, err)
 		return false, err
 	}
 
 	if f, _ := os.Stat(path); f != nil {
 		if photo.Size() != int(f.Size()) {
-			return false, r.downloadTo(photo, tmpPath, path)
+			return false, r.downloadTo(pickReason, photo, tmpPath, path, name)
 		} else {
 			// fmt.Printf("[icloudgo] [download] '%s' exist, skip.\n", path)
 			return true, nil
 		}
 	} else {
-		return false, r.downloadTo(photo, tmpPath, path)
+		return false, r.downloadTo(pickReason, photo, tmpPath, path, name)
 	}
 }
 
-func (r *downloadCommand) downloadTo(photo *icloudgo.PhotoAsset, tmpPath, realPath string) (err error) {
+func (r *downloadCommand) downloadTo(pickReason string, photo *icloudgo.PhotoAsset, tmpPath, realPath, saveName string) (err error) {
 	start := time.Now()
+	fmt.Printf("[icloudgo] [download] [%s] start %v, %v, %v\n", pickReason, saveName, photo.Filename(), photo.FormatSize())
 	defer func() {
 		diff := time.Now().Sub(start)
 		speed := float64(photo.Size()) / 1024 / diff.Seconds()
 		if err != nil && !errors.Is(err, internal.ErrResourceGone) && !strings.Contains(err.Error(), "no such host") {
-			fmt.Printf("[icloudgo] [download] fail %v, %v, %v/%v %.2fKB/s err=%s\n", photo.ID(), photo.Filename(), photo.FormatSize(), diff, speed, err)
+			fmt.Printf("[icloudgo] [download] fail %v, %v, %v/%v %.2fKB/s err=%s\n", saveName, photo.Filename(), photo.FormatSize(), diff, speed, err)
 		} else {
-			fmt.Printf("[icloudgo] [download] succ %v, %v, %v/%v %.2fKB/s\n", photo.ID(), photo.Filename(), photo.FormatSize(), diff, speed)
+			fmt.Printf("[icloudgo] [download] [%s] succ %v, %v, %v/%v %.2fKB/s\n", pickReason, saveName, photo.Filename(), photo.FormatSize(), diff, speed)
 		}
 	}()
 	retry := 5
@@ -365,7 +378,12 @@ func (r *downloadCommand) downloadTo(photo *icloudgo.PhotoAsset, tmpPath, realPa
 	return nil
 }
 
-func (r *downloadCommand) autoDeletePhoto() error {
+func (r *downloadCommand) autoDeletePhoto() (err error) {
+	defer func() {
+		if err != nil {
+			fmt.Printf("[icloudgo] [auto_delete] final err:%s\n", err.Error())
+		}
+	}()
 	if !r.AutoDelete {
 		return nil
 	}
@@ -405,4 +423,99 @@ func (r *downloadCommand) Close() {
 	if r.db != nil {
 		r.db.Close()
 	}
+}
+
+func (r *downloadCommand) getUnDownloadAssets() (*assertQueue, error) {
+	assets, err := r.dalGetUnDownloadAssets(&[]int{0}[0])
+	if err != nil {
+		return nil, err
+	} else if len(assets) == 0 {
+		return newAssertQueue(nil), nil
+	}
+	fmt.Printf("[icloudgo] [download] found %d undownload assets\n", len(assets))
+
+	var photoAssetList []*icloudgo.PhotoAsset
+	for _, po := range assets {
+		photoAssetList = append(photoAssetList, r.photoCli.NewPhotoAssetFromBytes([]byte(po.Data)))
+	}
+	sort.SliceStable(photoAssetList, func(i, j int) bool {
+		return photoAssetList[i].Size() < photoAssetList[j].Size()
+	})
+
+	return newAssertQueue(photoAssetList), nil
+}
+
+type assertQueue struct {
+	recentAssets []*icloudgo.PhotoAsset
+	recentIndex  int
+
+	oldAssets []*icloudgo.PhotoAsset
+	lowIndex  int
+	highIndex int
+	lock      *sync.Mutex
+}
+
+func newAssertQueue(data []*icloudgo.PhotoAsset) *assertQueue {
+	// 2天前的时间
+	now := time.Now()
+	twoDaysAge := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Add(-time.Hour * 24 * 2)
+	// 区分热数据, 老数据
+	recentAssets := []*icloudgo.PhotoAsset{}
+	oldAssets := []*icloudgo.PhotoAsset{}
+	for _, v := range data {
+		if v.Created().Before(twoDaysAge) {
+			oldAssets = append(oldAssets, v)
+		} else {
+			recentAssets = append(recentAssets, v)
+		}
+	}
+	return &assertQueue{
+		recentAssets: recentAssets,
+		recentIndex:  -1,
+		oldAssets:    oldAssets,
+		lowIndex:     -1,
+		highIndex:    len(data),
+		lock:         new(sync.Mutex),
+	}
+}
+
+func (r *assertQueue) pick(percent float32) (*icloudgo.PhotoAsset, string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	// 30% 的概率从 [热数据] 中选取
+	if percent <= 0.3 {
+		r.recentIndex++
+		if r.recentIndex < len(r.recentAssets) {
+			return r.recentAssets[r.recentIndex], "recent"
+		}
+	}
+
+	// 20% ~ 50% 的概率从 [小数据] 中选取
+	if percent <= 0.5 {
+		r.lowIndex++
+		if r.lowIndex < r.highIndex {
+			return r.oldAssets[r.lowIndex], "small"
+		}
+		return nil, ""
+	}
+
+	// 50% ~ 80% 的概率从 [大数据] 中选取
+	r.highIndex--
+	if r.highIndex > r.lowIndex {
+		return r.oldAssets[r.highIndex], "big"
+	}
+	return nil, ""
+}
+
+func (r *assertQueue) empty() bool {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	return r.highIndex-1 <= r.lowIndex
+}
+
+func (r *assertQueue) len() int {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	return r.highIndex - 1 - r.lowIndex
 }

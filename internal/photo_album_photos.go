@@ -78,14 +78,16 @@ func (r *PhotoAlbum) GetPhotosByCount(count int) ([]*PhotoAsset, error) {
 }
 
 func (r *PhotoAlbum) WalkPhotos(offset int, f func(offset int, assets []*PhotoAsset) error) error {
+	size := r.Size()
 	if r.Direction == "DESCENDING" {
-		offset = r.Size() - 1 - offset
+		offset = size - 1 - offset
 	}
 	for {
 		tmp, err := r.GetPhotosByOffset(offset, 200)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("[icloudgo] [walk_photo] name: %s, offset: %d, size=%d, got=%d, desc=%v\n", r.Name, offset, size, len(tmp), r.Direction == "DESCENDING")
 		if len(tmp) == 0 {
 			break
 		}
