@@ -511,11 +511,11 @@ func (r *assertQueue) pick(percent float32) (*icloudgo.PhotoAsset, string) {
 func (r *assertQueue) empty() bool {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	return r.highIndex-1 <= r.lowIndex
+	return r.highIndex-1 <= r.lowIndex && r.recentIndex >= len(r.recentAssets)-1
 }
 
 func (r *assertQueue) len() int {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	return r.highIndex - 1 - r.lowIndex
+	return (r.highIndex - 1 - r.lowIndex) + 1 + (len(r.recentAssets) - 1 - r.recentIndex)
 }
