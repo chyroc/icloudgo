@@ -8,6 +8,15 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm/v6
+          - linux/arm/v7
+          - linux/arm/v8
+          - linux/arm64
     permissions:
       contents: read
       packages: write
@@ -53,6 +62,52 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7,linux/arm/v8
+          platforms: ${{ matrix.platform }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      -
+        name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      -
+        name: Upload digest
+        uses: actions/upload-artifact@v3
+        with:
+          name: digests
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v3
+        with:
+          name: digests
+          path: /tmp/digests
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/chyroc/icloud-photo-cli
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/chyroc/icloud-photo-cli@sha256:%s ' *)
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ghcr.io/chyroc/icloud-photo-cli:${{ steps.meta.outputs.version }}
