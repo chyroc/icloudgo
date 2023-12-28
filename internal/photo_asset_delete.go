@@ -19,7 +19,7 @@ func (r *PhotoAsset) Delete() error {
 		Body:    body,
 	})
 	if err != nil {
-		return fmt.Errorf("delete %s failed: %w", r.Filename(), err)
+		return fmt.Errorf("delete %s failed: %w", r.Filename(false), err)
 	}
 	return nil
 }

@@ -75,6 +75,14 @@ func NewDownloadFlag() []cli.Flag {
 			Aliases:  []string{"ad"},
 			EnvVars:  []string{"ICLOUD_AUTO_DELETE"},
 		},
+		&cli.BoolFlag{
+			Name:     "with-live-photo",
+			Usage:    "Dont save video of the live photo",
+			Required: false,
+			Value:    true,
+			Aliases:  []string{"lp"},
+			EnvVars:  []string{"ICLOUD_WITH_LIVE_PHOTO"},
+		},
 	)
 	return res
 }
@@ -108,6 +116,7 @@ type downloadCommand struct {
 	AlbumName       string
 	ThreadNum       int
 	AutoDelete      bool
+	WithLivePhoto   bool
 	FolderStructure string
 	FileStructure   string
 
@@ -129,6 +138,7 @@ func newDownloadCommand(c *cli.Context) (*downloadCommand, error) {
 		StopNum:         c.Int("stop-found-num"),
 		AlbumName:       c.String("album"),
 		ThreadNum:       c.Int("thread-num"),
+		WithLivePhoto:   c.Bool("with-live-photo"),
 		AutoDelete:      c.Bool("auto-delete"),
 		FolderStructure: c.String("folder-structure"),
 		FileStructure:   c.String("file-structure"),
@@ -328,42 +338,61 @@ func (r *downloadCommand) downloadFromDatabase() error {
 }
 
 func (r *downloadCommand) downloadPhotoAsset(photo *icloudgo.PhotoAsset, pickReason string) (bool, error) {
+	isDownloaded, err := r.downloadPhotoAssetInternal(photo, pickReason, false)
+	if err != nil {
+		return false, err
+	}
+	if photo.IsLivePhoto() {
+		if !r.WithLivePhoto {
+			fmt.Printf("[icloudgo] [download] [%s] %s live photo skip\n", pickReason, photo.Filename(true))
+			return isDownloaded, nil
+		}
+		isDownloaded2, err := r.downloadPhotoAssetInternal(photo, pickReason, true)
+		if err != nil {
+			return false, err
+		}
+		return isDownloaded && isDownloaded2, nil
+	}
+	return isDownloaded, nil
+}
+
+func (r *downloadCommand) downloadPhotoAssetInternal(photo *icloudgo.PhotoAsset, pickReason string, livePhoto bool) (bool, error) {
 	outputDir := photo.OutputDir(r.Output, r.FolderStructure)
-	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal, r.FileStructure)
-	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal, r.FileStructure)
+	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal, r.FileStructure, livePhoto)
+	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal, r.FileStructure, livePhoto)
 	name := path[len(r.Output):]
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
-		fmt.Printf("[icloudgo] [download] [%s] mkdir '%s' output dir: '%s' failed: %s\n", pickReason, photo.Filename(), outputDir, err)
+		fmt.Printf("[icloudgo] [download] [%s] mkdir '%s' output dir: '%s' failed: %s\n", pickReason, photo.Filename(livePhoto), outputDir, err)
 		return false, err
 	}
 
 	if f, _ := os.Stat(path); f != nil {
 		if photo.Size() != int(f.Size()) {
-			return false, r.downloadTo(pickReason, photo, tmpPath, path, name)
+			return false, r.downloadTo(pickReason, photo, livePhoto, tmpPath, path, name)
 		} else {
 			// fmt.Printf("[icloudgo] [download] '%s' exist, skip.\n", path)
 			return true, nil
 		}
 	} else {
-		return false, r.downloadTo(pickReason, photo, tmpPath, path, name)
+		return false, r.downloadTo(pickReason, photo, livePhoto, tmpPath, path, name)
 	}
 }
 
-func (r *downloadCommand) downloadTo(pickReason string, photo *icloudgo.PhotoAsset, tmpPath, realPath, saveName string) (err error) {
+func (r *downloadCommand) downloadTo(pickReason string, photo *icloudgo.PhotoAsset, livePhoto bool, tmpPath, realPath, saveName string) (err error) {
 	start := time.Now()
-	fmt.Printf("[icloudgo] [download] [%s] start %v, %v, %v\n", pickReason, saveName, photo.Filename(), photo.FormatSize())
+	fmt.Printf("[icloudgo] [download] [%s] start %v, %v, %v\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize())
 	defer func() {
 		diff := time.Now().Sub(start)
 		speed := float64(photo.Size()) / 1024 / diff.Seconds()
 		if err != nil && !errors.Is(err, internal.ErrResourceGone) && !strings.Contains(err.Error(), "no such host") {
-			fmt.Printf("[icloudgo] [download] fail %v, %v, %v/%v %.2fKB/s err=%s\n", saveName, photo.Filename(), photo.FormatSize(), diff, speed, err)
+			fmt.Printf("[icloudgo] [download] fail %v, %v, %v/%v %.2fKB/s err=%s\n", saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed, err)
 		} else {
-			fmt.Printf("[icloudgo] [download] [%s] succ %v, %v, %v/%v %.2fKB/s\n", pickReason, saveName, photo.Filename(), photo.FormatSize(), diff, speed)
+			fmt.Printf("[icloudgo] [download] [%s] succ %v, %v, %v/%v %.2fKB/s\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed)
 		}
 	}()
 	retry := 5
 	for i := 0; i < retry; i++ {
-		if err := photo.DownloadTo(icloudgo.PhotoVersionOriginal, tmpPath); err != nil {
+		if err := photo.DownloadTo(icloudgo.PhotoVersionOriginal, livePhoto, tmpPath); err != nil {
 			if strings.Contains(err.Error(), "i/o timeout") && i < retry-1 {
 				continue
 			}
@@ -401,14 +430,12 @@ func (r *downloadCommand) autoDeletePhoto() (err error) {
 				if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
 					return err
 				}
-				path := photoAsset.LocalPath(photoAsset.OutputDir(r.Output, r.FolderStructure), icloudgo.PhotoVersionOriginal, r.FileStructure)
-				if err := os.Remove(path); err != nil {
-					if errors.Is(err, os.ErrNotExist) {
-						continue
-					}
+				if err := r.removeLocalFile(photoAsset, false); err != nil {
 					return err
 				}
-				fmt.Printf("[icloudgo] [auto_delete] delete %v, %v, %v\n", photoAsset.ID(), photoAsset.Filename(), photoAsset.FormatSize())
+				if err := r.removeLocalFile(photoAsset, true); err != nil {
+					return err
+				}
 			}
 			return nil
 		}); err != nil {
@@ -417,6 +444,18 @@ func (r *downloadCommand) autoDeletePhoto() (err error) {
 		}
 		time.Sleep(time.Hour)
 	}
+}
+
+func (r *downloadCommand) removeLocalFile(photoAsset *internal.PhotoAsset, livePhoto bool) error {
+	path := photoAsset.LocalPath(photoAsset.OutputDir(r.Output, r.FolderStructure), icloudgo.PhotoVersionOriginal, r.FileStructure, livePhoto)
+	if err := os.Remove(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	fmt.Printf("[icloudgo] [auto_delete] delete %v, %v, %v\n", photoAsset.ID(), photoAsset.Filename(livePhoto), photoAsset.FormatSize())
+	return nil
 }
 
 func (r *downloadCommand) Close() {

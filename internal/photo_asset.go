@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
 
 type PhotoAsset struct {
-	service       *PhotoService
-	_versions     map[PhotoVersion]*photoVersionDetail
-	_masterRecord *photoRecord
-	_assetRecord  *photoRecord
-	lock          *sync.Mutex
+	service         *PhotoService
+	normalPhotos    map[PhotoVersion]*photoVersionDetail
+	livePhotoVideos map[PhotoVersion]*photoVersionDetail
+	_masterRecord   *photoRecord
+	_assetRecord    *photoRecord
+	lock            *sync.Mutex
 }
 
 func (r *PhotoAsset) Bytes() []byte {
@@ -39,15 +41,28 @@ type photoAssetData struct {
 
 func (r *PhotoService) newPhotoAsset(masterRecord, assetRecords *photoRecord) *PhotoAsset {
 	return &PhotoAsset{
-		service:       r,
-		_masterRecord: masterRecord,
-		_assetRecord:  assetRecords,
-		_versions:     nil,
-		lock:          new(sync.Mutex),
+		service:         r,
+		normalPhotos:    nil,
+		livePhotoVideos: nil,
+		_masterRecord:   masterRecord,
+		_assetRecord:    assetRecords,
+		lock:            new(sync.Mutex),
 	}
 }
 
-func (r *PhotoAsset) Filename() string {
+func (r *PhotoAsset) Filename(livePhoto bool) string {
+	name := r.filename()
+	if !livePhoto {
+		return name
+	}
+	l := strings.SplitN(name, ".", 2)
+	if len(l) == 2 {
+		return l[0] + ".mov"
+	}
+	return name + ".mov"
+}
+
+func (r *PhotoAsset) filename() string {
 	if v := r._masterRecord.Fields.FilenameEnc.Value; v != "" {
 		bs, _ := base64.StdEncoding.DecodeString(v)
 		if len(bs) > 0 {
@@ -58,21 +73,22 @@ func (r *PhotoAsset) Filename() string {
 	return cleanFilename(r.ID())
 }
 
-func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion, fileStructure string) string {
-	ext := filepath.Ext(r.Filename())
-	filename := ""
+func (r *PhotoAsset) LocalPath(outputDir string, size PhotoVersion, fileStructure string, livePhoto bool) string {
+	filename := r.Filename(livePhoto)
+	ext := filepath.Ext(filename)
+	name := ""
 	switch fileStructure {
 	case "name":
-		filename = cleanFilename(r.Filename())
+		name = cleanFilename(filename)
 	default:
-		filename = cleanFilename(r.ID())
+		name = cleanFilename(r.ID())
 	}
 
 	if size == PhotoVersionOriginal || size == "" {
-		return filepath.Join(outputDir, filename+ext)
+		return filepath.Join(outputDir, name+ext)
 	}
 
-	return filepath.Join(outputDir, filename+"_"+string(size)+ext)
+	return filepath.Join(outputDir, name+"_"+string(size)+ext)
 }
 
 func (r *PhotoAsset) ID() string {
