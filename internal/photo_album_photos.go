@@ -5,14 +5,14 @@ import (
 	"fmt"
 )
 
-func (r *PhotoAlbum) PhotosIter(startOffset int) PhotosIterNext {
+func (r *PhotoAlbum) PhotosIter(startOffset int64) PhotosIterNext {
 	if r.Direction == "DESCENDING" {
 		startOffset = r.Size() - 1 - startOffset
 	}
 	return newPhotosIterNext(r, startOffset)
 }
 
-func (r *PhotoAlbum) GetPhotosByOffset(offset, limit int) ([]*PhotoAsset, error) {
+func (r *PhotoAlbum) GetPhotosByOffset(offset, limit int64) ([]*PhotoAsset, error) {
 	var assets []*PhotoAsset
 
 	text, err := r.service.icloud.request(&rawReq{
@@ -51,7 +51,7 @@ func (r *PhotoAlbum) GetPhotosByOffset(offset, limit int) ([]*PhotoAsset, error)
 }
 
 func (r *PhotoAlbum) GetPhotosByCount(count int) ([]*PhotoAsset, error) {
-	offset := 0
+	offset := int64(0)
 	if r.Direction == "DESCENDING" {
 		offset = r.Size() - 1
 	}
@@ -71,13 +71,13 @@ func (r *PhotoAlbum) GetPhotosByCount(count int) ([]*PhotoAsset, error) {
 				return assets, nil
 			}
 		}
-		offset = r.calOffset(offset, len(tmp))
+		offset = r.calOffset(offset, int64(len(tmp)))
 	}
 
 	return assets, nil
 }
 
-func (r *PhotoAlbum) WalkPhotos(offset int, f func(offset int, assets []*PhotoAsset) error) error {
+func (r *PhotoAlbum) WalkPhotos(offset int64, f func(offset int64, assets []*PhotoAsset) error) error {
 	size := r.Size()
 	if r.Direction == "DESCENDING" {
 		offset = size - 1 - offset
@@ -91,7 +91,7 @@ func (r *PhotoAlbum) WalkPhotos(offset int, f func(offset int, assets []*PhotoAs
 		if len(tmp) == 0 {
 			break
 		}
-		offset = r.calOffset(offset, len(tmp))
+		offset = r.calOffset(offset, int64(len(tmp)))
 
 		if err := f(offset, tmp); err != nil {
 			return err
@@ -100,7 +100,7 @@ func (r *PhotoAlbum) WalkPhotos(offset int, f func(offset int, assets []*PhotoAs
 	return nil
 }
 
-func (r *PhotoAlbum) calOffset(offset, lastAssetLen int) int {
+func (r *PhotoAlbum) calOffset(offset, lastAssetLen int64) int64 {
 	if r.Direction == "DESCENDING" {
 		offset = offset - lastAssetLen
 	} else {
@@ -109,7 +109,7 @@ func (r *PhotoAlbum) calOffset(offset, lastAssetLen int) int {
 	return offset
 }
 
-func (r *PhotoAlbum) listQueryGenerate(offset, limit int, listType string, direction string, queryFilter []*folderMetaDataQueryFilter) any {
+func (r *PhotoAlbum) listQueryGenerate(offset, limit int64, listType string, direction string, queryFilter []*folderMetaDataQueryFilter) any {
 	res := map[string]any{
 		"query": map[string]any{
 			"filterBy": append([]*folderMetaDataQueryFilter{
@@ -242,283 +242,107 @@ type photoRecord struct {
 	RecordName string `json:"recordName"`
 	RecordType string `json:"recordType"`
 	Fields     struct {
-		ItemType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"itemType,omitempty"`
-		ResJPEGThumbFingerprint struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGThumbFingerprint,omitempty"`
-		FilenameEnc struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"filenameEnc,omitempty"`
-		ResJPEGMedRes struct {
+		ItemType                       strValue `json:"itemType,omitempty"`
+		ResJPEGThumbFingerprint        strValue `json:"resJPEGThumbFingerprint,omitempty"`
+		FilenameEnc                    strValue `json:"filenameEnc,omitempty"`
+		ResJPEGMedRes                  urlValue `json:"resJPEGMedRes,omitempty"`
+		OriginalOrientation            intValue `json:"originalOrientation,omitempty"`
+		ResJPEGMedHeight               intValue `json:"resJPEGMedHeight,omitempty"`
+		ResOriginalRes                 urlValue `json:"resOriginalRes,omitempty"`
+		ResJPEGMedFileType             strValue `json:"resJPEGMedFileType,omitempty"`
+		ResJPEGThumbHeight             intValue `json:"resJPEGThumbHeight,omitempty"`
+		ResJPEGThumbWidth              intValue `json:"resJPEGThumbWidth,omitempty"`
+		ResOriginalWidth               intValue `json:"resOriginalWidth,omitempty"`
+		ResJPEGThumbFileType           strValue `json:"resJPEGThumbFileType,omitempty"`
+		DataClassType                  intValue `json:"dataClassType,omitempty"`
+		ResOriginalFingerprint         strValue `json:"resOriginalFingerprint,omitempty"`
+		ResJPEGMedWidth                intValue `json:"resJPEGMedWidth,omitempty"`
+		ResJPEGThumbRes                urlValue `json:"resJPEGThumbRes,omitempty"`
+		ResOriginalFileType            strValue `json:"resOriginalFileType,omitempty"`
+		ResOriginalHeight              intValue `json:"resOriginalHeight,omitempty"`
+		ResJPEGMedFingerprint          strValue `json:"resJPEGMedFingerprint,omitempty"`
+		ResVidSmallHeight              intValue `json:"resVidSmallHeight,omitempty"`
+		ResOriginalVidComplFileType    strValue `json:"resOriginalVidComplFileType,omitempty"`
+		ResOriginalVidComplWidth       intValue `json:"resOriginalVidComplWidth,omitempty"`
+		ResVidMedFileType              strValue `json:"resVidMedFileType,omitempty"`
+		ResVidMedRes                   urlValue `json:"resVidMedRes,omitempty"`
+		ResVidSmallFingerprint         strValue `json:"resVidSmallFingerprint,omitempty"`
+		ResVidMedWidth                 intValue `json:"resVidMedWidth,omitempty"`
+		ResOriginalVidComplFingerprint strValue `json:"resOriginalVidComplFingerprint,omitempty"`
+		ResVidSmallFileType            strValue `json:"resVidSmallFileType,omitempty"`
+		ResVidSmallRes                 urlValue `json:"resVidSmallRes,omitempty"`
+		ResOriginalVidComplRes         urlValue `json:"resOriginalVidComplRes,omitempty"`
+		ResVidMedFingerprint           strValue `json:"resVidMedFingerprint,omitempty"`
+		ResVidMedHeight                intValue `json:"resVidMedHeight,omitempty"`
+		ResOriginalVidComplHeight      intValue `json:"resOriginalVidComplHeight,omitempty"`
+		ResVidSmallWidth               intValue `json:"resVidSmallWidth,omitempty"`
+		AssetDate                      intValue `json:"assetDate,omitempty"`
+		Orientation                    intValue `json:"orientation,omitempty"`
+		AddedDate                      intValue `json:"addedDate,omitempty"`
+		AssetSubtypeV2                 intValue `json:"assetSubtypeV2,omitempty"`
+		AssetHDRType                   intValue `json:"assetHDRType,omitempty"`
+		TimeZoneOffset                 intValue `json:"timeZoneOffset,omitempty"`
+		MasterRef                      struct {
 			Value struct {
-				FileChecksum      string `json:"fileChecksum"`
-				Size              int    `json:"size"`
-				WrappingKey       string `json:"wrappingKey"`
-				ReferenceChecksum string `json:"referenceChecksum"`
-				DownloadURL       string `json:"downloadURL"`
-			} `json:"value"`
-			Type string `json:"type"`
-		} `json:"resJPEGMedRes,omitempty"`
-		OriginalOrientation struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"originalOrientation,omitempty"`
-		ResJPEGMedHeight struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGMedHeight,omitempty"`
-		ResOriginalRes struct {
-			Value struct {
-				FileChecksum      string `json:"fileChecksum"`
-				Size              int    `json:"size"`
-				WrappingKey       string `json:"wrappingKey"`
-				ReferenceChecksum string `json:"referenceChecksum"`
-				DownloadURL       string `json:"downloadURL"`
-			} `json:"value"`
-			Type string `json:"type"`
-		} `json:"resOriginalRes,omitempty"`
-		ResJPEGMedFileType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGMedFileType,omitempty"`
-		ResJPEGThumbHeight struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGThumbHeight,omitempty"`
-		ResJPEGThumbWidth struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGThumbWidth,omitempty"`
-		ResOriginalWidth struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalWidth,omitempty"`
-		ResJPEGThumbFileType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGThumbFileType,omitempty"`
-		DataClassType struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"dataClassType,omitempty"`
-		ResOriginalFingerprint struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalFingerprint,omitempty"`
-		ResJPEGMedWidth struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGMedWidth,omitempty"`
-		ResJPEGThumbRes struct {
-			Value struct {
-				FileChecksum      string `json:"fileChecksum"`
-				Size              int    `json:"size"`
-				WrappingKey       string `json:"wrappingKey"`
-				ReferenceChecksum string `json:"referenceChecksum"`
-				DownloadURL       string `json:"downloadURL"`
-			} `json:"value"`
-			Type string `json:"type"`
-		} `json:"resJPEGThumbRes,omitempty"`
-		ResOriginalFileType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalFileType,omitempty"`
-		ResOriginalHeight struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalHeight,omitempty"`
-		ResJPEGMedFingerprint struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resJPEGMedFingerprint,omitempty"`
-		ResVidSmallHeight struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidSmallHeight,omitempty"`
-		ResOriginalVidComplFileType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalVidComplFileType,omitempty"`
-		ResOriginalVidComplWidth struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalVidComplWidth,omitempty"`
-		ResVidMedFileType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidMedFileType,omitempty"`
-		ResVidMedRes struct {
-			Value struct {
-				FileChecksum      string `json:"fileChecksum"`
-				Size              int    `json:"size"`
-				WrappingKey       string `json:"wrappingKey"`
-				ReferenceChecksum string `json:"referenceChecksum"`
-				DownloadURL       string `json:"downloadURL"`
-			} `json:"value"`
-			Type string `json:"type"`
-		} `json:"resVidMedRes,omitempty"`
-		ResVidSmallFingerprint struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidSmallFingerprint,omitempty"`
-		ResVidMedWidth struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidMedWidth,omitempty"`
-		ResOriginalVidComplFingerprint struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalVidComplFingerprint,omitempty"`
-		ResVidSmallFileType struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidSmallFileType,omitempty"`
-		ResVidSmallRes struct {
-			Value struct {
-				FileChecksum      string `json:"fileChecksum"`
-				Size              int    `json:"size"`
-				WrappingKey       string `json:"wrappingKey"`
-				ReferenceChecksum string `json:"referenceChecksum"`
-				DownloadURL       string `json:"downloadURL"`
-			} `json:"value"`
-			Type string `json:"type"`
-		} `json:"resVidSmallRes,omitempty"`
-		ResOriginalVidComplRes struct {
-			Value struct {
-				FileChecksum      string `json:"fileChecksum"`
-				Size              int    `json:"size"`
-				WrappingKey       string `json:"wrappingKey"`
-				ReferenceChecksum string `json:"referenceChecksum"`
-				DownloadURL       string `json:"downloadURL"`
-			} `json:"value"`
-			Type string `json:"type"`
-		} `json:"resOriginalVidComplRes,omitempty"`
-		ResVidMedFingerprint struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidMedFingerprint,omitempty"`
-		ResVidMedHeight struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidMedHeight,omitempty"`
-		ResOriginalVidComplHeight struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resOriginalVidComplHeight,omitempty"`
-		ResVidSmallWidth struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"resVidSmallWidth,omitempty"`
-		AssetDate struct {
-			Value int64  `json:"value"`
-			Type  string `json:"type"`
-		} `json:"assetDate,omitempty"`
-		Orientation struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"orientation,omitempty"`
-		AddedDate struct {
-			Value int64  `json:"value"`
-			Type  string `json:"type"`
-		} `json:"addedDate,omitempty"`
-		AssetSubtypeV2 struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"assetSubtypeV2,omitempty"`
-		AssetHDRType struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"assetHDRType,omitempty"`
-		TimeZoneOffset struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"timeZoneOffset,omitempty"`
-		MasterRef struct {
-			Value struct {
-				RecordName string `json:"recordName"`
-				Action     string `json:"action"`
-				ZoneID     struct {
-					ZoneName        string `json:"zoneName"`
-					OwnerRecordName string `json:"ownerRecordName"`
-					ZoneType        string `json:"zoneType"`
-				} `json:"zoneID"`
+				RecordName string    `json:"recordName"`
+				Action     string    `json:"action"`
+				ZoneID     zoneValue `json:"zoneID"`
 			} `json:"value"`
 			Type string `json:"type"`
 		} `json:"masterRef,omitempty"`
-		AdjustmentRenderType struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"adjustmentRenderType,omitempty"`
-		VidComplDispScale struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"vidComplDispScale,omitempty"`
-		IsHidden struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"isHidden,omitempty"`
-		Duration struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"duration,omitempty"`
-		BurstFlags struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"burstFlags,omitempty"`
-		AssetSubtype struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"assetSubtype,omitempty"`
-		VidComplDurScale struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"vidComplDurScale,omitempty"`
-		VidComplDurValue struct {
-			Value int64  `json:"value"`
-			Type  string `json:"type"`
-		} `json:"vidComplDurValue,omitempty"`
-		VidComplVisibilityState struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"vidComplVisibilityState,omitempty"`
-		CustomRenderedValue struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"customRenderedValue,omitempty"`
-		IsFavorite struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"isFavorite,omitempty"`
-		VidComplDispValue struct {
-			Value int    `json:"value"`
-			Type  string `json:"type"`
-		} `json:"vidComplDispValue,omitempty"`
-		LocationEnc struct {
-			Value string `json:"value"`
-			Type  string `json:"type"`
-		} `json:"locationEnc,omitempty"`
+		AdjustmentRenderType    intValue `json:"adjustmentRenderType,omitempty"`
+		VidComplDispScale       intValue `json:"vidComplDispScale,omitempty"`
+		IsHidden                intValue `json:"isHidden,omitempty"`
+		Duration                intValue `json:"duration,omitempty"`
+		BurstFlags              intValue `json:"burstFlags,omitempty"`
+		AssetSubtype            intValue `json:"assetSubtype,omitempty"`
+		VidComplDurScale        intValue `json:"vidComplDurScale,omitempty"`
+		VidComplDurValue        intValue `json:"vidComplDurValue,omitempty"`
+		VidComplVisibilityState intValue `json:"vidComplVisibilityState,omitempty"`
+		CustomRenderedValue     intValue `json:"customRenderedValue,omitempty"`
+		IsFavorite              intValue `json:"isFavorite,omitempty"`
+		VidComplDispValue       intValue `json:"vidComplDispValue,omitempty"`
+		LocationEnc             strValue `json:"locationEnc,omitempty"`
 	} `json:"fields"`
-	PluginFields    struct{} `json:"pluginFields"`
-	RecordChangeTag string   `json:"recordChangeTag"`
-	Created         struct {
-		Timestamp      int64  `json:"timestamp"`
-		UserRecordName string `json:"userRecordName"`
-		DeviceID       string `json:"deviceID"`
-	} `json:"created"`
-	Modified struct {
-		Timestamp      int64  `json:"timestamp"`
-		UserRecordName string `json:"userRecordName"`
-		DeviceID       string `json:"deviceID"`
-	} `json:"modified"`
-	Deleted bool `json:"deleted"`
-	ZoneID  struct {
-		ZoneName        string `json:"zoneName"`
-		OwnerRecordName string `json:"ownerRecordName"`
-		ZoneType        string `json:"zoneType"`
-	} `json:"zoneID"`
+	PluginFields    struct{}       `json:"pluginFields"`
+	RecordChangeTag string         `json:"recordChangeTag"`
+	Created         timestampValue `json:"created"`
+	Modified        timestampValue `json:"modified"`
+	Deleted         bool           `json:"deleted"`
+	ZoneID          zoneValue      `json:"zoneID"`
+}
+
+type intValue struct {
+	Value int64  `json:"value"`
+	Type  string `json:"type"` // INT64, TIMESTAMP,
+}
+
+type strValue struct {
+	Value string `json:"value"`
+	Type  string `json:"type"`
+}
+
+type urlValue struct {
+	Value urlValueVal `json:"value"`
+	Type  string      `json:"type"`
+}
+
+type timestampValue struct {
+	Timestamp      int64  `json:"timestamp"`
+	UserRecordName string `json:"userRecordName"`
+	DeviceID       string `json:"deviceID"`
+}
+
+type urlValueVal struct {
+	FileChecksum      string `json:"fileChecksum"`
+	Size              int    `json:"size"`
+	WrappingKey       string `json:"wrappingKey"`
+	ReferenceChecksum string `json:"referenceChecksum"`
+	DownloadURL       string `json:"downloadURL"`
+}
+
+type zoneValue struct {
+	ZoneName        string `json:"zoneName"`
+	OwnerRecordName string `json:"ownerRecordName"`
+	ZoneType        string `json:"zoneType"`
 }

@@ -32,7 +32,7 @@ type PhotoAlbum struct {
 	QueryFilter []*folderMetaDataQueryFilter
 
 	// cache
-	_size *int
+	_size *int64
 	lock  *sync.Mutex
 }
 

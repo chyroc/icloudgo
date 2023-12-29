@@ -94,9 +94,9 @@ func Download(c *cli.Context) error {
 	}
 	defer cmd.client.Close()
 
-	go cmd.saveMeta()
-	go cmd.download()
-	go cmd.autoDeletePhoto()
+	go cmd.saveMeta()        //nolint:errcheck
+	go cmd.download()        //nolint:errcheck
+	go cmd.autoDeletePhoto() //nolint:errcheck
 
 	// hold
 	<-cmd.exit
@@ -195,7 +195,7 @@ func (r *downloadCommand) saveMeta() (err error) {
 	for {
 		dbOffset := r.dalGetDownloadOffset(album.Size())
 		fmt.Printf("[icloudgo] [meta] album: %s, total: %d, db_offset: %d, target: %s, thread-num: %d, stop-num: %d\n", album.Name, album.Size(), dbOffset, r.Output, r.ThreadNum, r.StopNum)
-		err = album.WalkPhotos(dbOffset, func(offset int, assets []*internal.PhotoAsset) error {
+		err = album.WalkPhotos(dbOffset, func(offset int64, assets []*internal.PhotoAsset) error {
 			if err := r.dalAddAssets(assets); err != nil {
 				return err
 			}
@@ -382,7 +382,7 @@ func (r *downloadCommand) downloadTo(pickReason string, photo *icloudgo.PhotoAss
 	start := time.Now()
 	fmt.Printf("[icloudgo] [download] [%s] started %v, %v, %v\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize())
 	defer func() {
-		diff := time.Now().Sub(start)
+		diff := time.Since(start)
 		speed := float64(photo.Size()) / 1024 / diff.Seconds()
 		if err != nil && !errors.Is(err, internal.ErrResourceGone) && !strings.Contains(err.Error(), "no such host") {
 			fmt.Printf("[icloudgo] [download] failure %v, %v, %v/%v %.2fKB/s err=%s\n", saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed, err)
@@ -425,7 +425,7 @@ func (r *downloadCommand) autoDeletePhoto() (err error) {
 		}
 
 		fmt.Printf("[icloudgo] [auto_delete] auto delete album total: %d\n", album.Size())
-		if err = album.WalkPhotos(0, func(offset int, assets []*internal.PhotoAsset) error {
+		if err = album.WalkPhotos(0, func(offset int64, assets []*internal.PhotoAsset) error {
 			for _, photoAsset := range assets {
 				if err := r.dalDeleteAsset(photoAsset.ID()); err != nil {
 					return err

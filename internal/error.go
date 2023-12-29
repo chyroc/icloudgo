@@ -75,7 +75,7 @@ func (r errResp1) err() error {
 		text1 := strings.Trim(v.Title, ".")
 		text2 := strings.Trim(v.Message, ".")
 
-		if strings.ToLower(text2) != strings.ToLower(text1) {
+		if !strings.EqualFold(text1, text2) {
 			text1 = text1 + ", " + text2
 		}
 

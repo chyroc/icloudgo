@@ -56,9 +56,7 @@ func (s set[T]) Add(item T) {
 }
 
 func (s set[T]) Remove(item T) {
-	if _, ok := s[item]; ok {
-		delete(s, item)
-	}
+	delete(s, item)
 }
 
 func (s set[T]) Len() int {

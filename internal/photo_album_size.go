@@ -6,12 +6,12 @@ import (
 	"net/http"
 )
 
-func (r *PhotoAlbum) Size() int {
+func (r *PhotoAlbum) Size() int64 {
 	size, _ := r.GetSize()
 	return size
 }
 
-func (r *PhotoAlbum) GetSize() (int, error) {
+func (r *PhotoAlbum) GetSize() (int64, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -28,7 +28,7 @@ func (r *PhotoAlbum) GetSize() (int, error) {
 	return size, nil
 }
 
-func (r *PhotoAlbum) getSize() (int, error) {
+func (r *PhotoAlbum) getSize() (int64, error) {
 	text, err := r.service.icloud.request(&rawReq{
 		Method:  http.MethodPost,
 		URL:     fmt.Sprintf("%s/internal/records/query/batch", r.service.serviceEndpoint),
@@ -75,29 +75,14 @@ type getAlbumSizeResp struct {
 			RecordName string `json:"recordName"`
 			RecordType string `json:"recordType"`
 			Fields     struct {
-				ItemCount struct {
-					Value int    `json:"value"`
-					Type  string `json:"type"`
-				} `json:"itemCount"`
+				ItemCount intValue `json:"itemCount"`
 			} `json:"fields"`
-			PluginFields    struct{} `json:"pluginFields"`
-			RecordChangeTag string   `json:"recordChangeTag"`
-			Created         struct {
-				Timestamp      int64  `json:"timestamp"`
-				UserRecordName string `json:"userRecordName"`
-				DeviceID       string `json:"deviceID"`
-			} `json:"created"`
-			Modified struct {
-				Timestamp      int64  `json:"timestamp"`
-				UserRecordName string `json:"userRecordName"`
-				DeviceID       string `json:"deviceID"`
-			} `json:"modified"`
-			Deleted bool `json:"deleted"`
-			ZoneID  struct {
-				ZoneName        string `json:"zoneName"`
-				OwnerRecordName string `json:"ownerRecordName"`
-				ZoneType        string `json:"zoneType"`
-			} `json:"zoneID"`
+			PluginFields    struct{}       `json:"pluginFields"`
+			RecordChangeTag string         `json:"recordChangeTag"`
+			Created         timestampValue `json:"created"`
+			Modified        timestampValue `json:"modified"`
+			Deleted         bool           `json:"deleted"`
+			ZoneID          zoneValue      `json:"zoneID"`
 		} `json:"records"`
 	} `json:"batch"`
 }

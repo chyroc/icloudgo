@@ -160,8 +160,8 @@ func (r *PhotoAsset) packVersion() (map[PhotoVersion]*photoVersionDetail, map[Ph
 
 type photoVersionDetail struct {
 	Filename string `json:"filename"`
-	Width    int    `json:"width"`
-	Height   int    `json:"height"`
+	Width    int64  `json:"width"`
+	Height   int64  `json:"height"`
 	Size     int    `json:"size"`
 	URL      string `json:"url"`
 	Type     string `json:"type"`

@@ -8,7 +8,6 @@ type DriveService struct {
 	icloud          *Client
 	serviceRoot     string
 	serviceEndpoint string
-	querys          map[string]string
 
 	lock *sync.Mutex
 }

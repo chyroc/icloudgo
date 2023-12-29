@@ -114,11 +114,11 @@ func (r *downloadCommand) keyAssert(id string) []byte {
 	return []byte("assert_" + id)
 }
 
-func (r *downloadCommand) dalGetDownloadOffset(albumSize int) int {
+func (r *downloadCommand) dalGetDownloadOffset(albumSize int64) int64 {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	var result int
+	var result int64
 	_ = r.db.Update(func(txn *badger.Txn) error {
 		offset, err := r.getDownloadOffset(txn, false)
 		if err != nil {
@@ -143,7 +143,7 @@ func (r *downloadCommand) dalGetDownloadOffset(albumSize int) int {
 	return result
 }
 
-func (r *downloadCommand) getDownloadOffset(txn *badger.Txn, needLock bool) (int, error) {
+func (r *downloadCommand) getDownloadOffset(txn *badger.Txn, needLock bool) (int64, error) {
 	if needLock {
 		r.lock.Lock()
 		defer r.lock.Unlock()
@@ -158,26 +158,22 @@ func (r *downloadCommand) getDownloadOffset(txn *badger.Txn, needLock bool) (int
 	if err != nil {
 		return 0, err
 	}
-	offset, err := strconv.Atoi(string(val))
-	if err != nil {
-		return 0, err
-	}
-	return offset, nil
+	return strconv.ParseInt(string(val), 10, 64)
 }
 
-func (r *downloadCommand) saveDownloadOffset(txn *badger.Txn, offset int, needLock bool) error {
+func (r *downloadCommand) saveDownloadOffset(txn *badger.Txn, offset int64, needLock bool) error {
 	if needLock {
 		r.lock.Lock()
 		defer r.lock.Unlock()
 	}
 	if txn == nil {
 		return r.db.Update(func(txn *badger.Txn) error {
-			e := badger.NewEntry(r.keyOffset(), []byte(strconv.Itoa(offset)))
+			e := badger.NewEntry(r.keyOffset(), []byte(strconv.FormatInt(offset, 10)))
 			e.ExpiresAt = uint64(time.Now().Add(time.Hour * 12).Unix())
 			return txn.SetEntry(e)
 		})
 	}
-	e := badger.NewEntry(r.keyOffset(), []byte(strconv.Itoa(offset)))
+	e := badger.NewEntry(r.keyOffset(), []byte(strconv.FormatInt(offset, 10)))
 	e.ExpiresAt = uint64(time.Now().Add(time.Hour * 12).Unix())
 	return txn.SetEntry(e)
 }
