@@ -19,9 +19,10 @@ docker run \
   -e ICLOUD_STOP_FOUND_NUM=50 \
   -e ICLOUD_FOLDER_STRUCTURE="2006/01/02" \
   -e ICLOUD_FILE_STRUCTURE="id" \
+  -e ICLOUD_WITH_LIVE_PHOTO="true" \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.20.1 download
+  ghcr.io/chyroc/icloud-photo-cli:0.21 download
 ```
 
 ### By Go
@@ -56,6 +57,7 @@ OPTIONS:
    --stop-found-num stop-found-num, -s stop-found-num  stop download when found stop-found-num photos have been downloaded (default: 0) [$ICLOUD_STOP_FOUND_NUM]
    --thread-num value, -t value                        thread num, if not set, means 1 (default: 1) [$ICLOUD_THREAD_NUM]
    --auto-delete, --ad                                 Automatically delete photos from local but recently deleted folders (default: true) [$ICLOUD_AUTO_DELETE]
+   --with-live-photo, --lp                             Save video of the live photo (default: true) [$ICLOUD_WITH_LIVE_PHOTO]
    --help, -h                                          show help
 ```
 
@@ -74,7 +76,7 @@ docker run \
   -e ICLOUD_FILE=/icloud_photos/filepath \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.20.1 upload
+  ghcr.io/chyroc/icloud-photo-cli:0.21 upload
 ```
 
 ### By Go

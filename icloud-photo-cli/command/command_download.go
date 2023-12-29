@@ -77,7 +77,7 @@ func NewDownloadFlag() []cli.Flag {
 		},
 		&cli.BoolFlag{
 			Name:     "with-live-photo",
-			Usage:    "Dont save video of the live photo",
+			Usage:    "Save video of the live photo",
 			Required: false,
 			Value:    true,
 			Aliases:  []string{"lp"},

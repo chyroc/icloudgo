@@ -26,6 +26,7 @@ ENV ICLOUD_AUTO_DELETE="true"
 ENV ICLOUD_STOP_FOUND_NUM="50"
 ENV ICLOUD_FOLDER_STRUCTURE="2006/01/02"
 ENV ICLOUD_FILE_STRUCTURE="id"
+ENV ICLOUD_WITH_LIVE_PHOTO="true"
 
 COPY --from=build /go/bin/icloud-photo-cli /bin/icloud-photo-cli
 
