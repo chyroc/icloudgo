@@ -103,8 +103,12 @@ func (r *PhotoAsset) FormatSize() string {
 	return formatSize(r.Size())
 }
 
-func (r *PhotoAsset) Created() time.Time {
+func (r *PhotoAsset) AddDate() time.Time {
 	return time.UnixMilli(r._masterRecord.Created.Timestamp)
+}
+
+func (r *PhotoAsset) AssetDate() time.Time {
+	return time.UnixMilli(r._assetRecord.Fields.AssetDate.Value)
 }
 
 func (r *PhotoAsset) OutputDir(output, folderStructure string) string {
@@ -112,8 +116,18 @@ func (r *PhotoAsset) OutputDir(output, folderStructure string) string {
 		return output
 	}
 
-	createdFolderName := r.Created().Format(folderStructure)
-	return filepath.Join(output, createdFolderName)
+	assetDate := r.AssetDate().Format(folderStructure)
+	return filepath.Join(output, assetDate)
+}
+
+// 仅为兼容性
+func (r *PhotoAsset) OldOutputDir(output, folderStructure string) string {
+	if folderStructure == "" || folderStructure == "/" {
+		return output
+	}
+
+	assetDate := r.AddDate().Format(folderStructure)
+	return filepath.Join(output, assetDate)
 }
 
 func formatSize(size int) string {

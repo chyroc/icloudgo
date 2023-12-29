@@ -40,8 +40,8 @@ func (r *PhotoAsset) DownloadTo(version PhotoVersion, livePhoto bool, target str
 	}
 
 	// 1676381385791 to time.time
-	created := r.Created()
-	if err := os.Chtimes(target, created, created); err != nil {
+	assetDate := r.AssetDate()
+	if err := os.Chtimes(target, assetDate, assetDate); err != nil {
 		return fmt.Errorf("change file time error: %v", err)
 	}
 

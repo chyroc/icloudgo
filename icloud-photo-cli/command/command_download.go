@@ -361,9 +361,26 @@ func (r *downloadCommand) downloadPhotoAssetInternal(photo *icloudgo.PhotoAsset,
 	tmpPath := photo.LocalPath(filepath.Join(r.Output, ".tmp"), icloudgo.PhotoVersionOriginal, r.FileStructure, livePhoto)
 	path := photo.LocalPath(outputDir, icloudgo.PhotoVersionOriginal, r.FileStructure, livePhoto)
 	name := path[len(r.Output):]
+
+	oldOutputDir := photo.OldOutputDir(r.Output, r.FolderStructure)
+	oldPath := photo.LocalPath(oldOutputDir, icloudgo.PhotoVersionOriginal, r.FileStructure, livePhoto)
+
 	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
 		fmt.Printf("[icloudgo] [download] [%s] mkdir '%s' output dir: '%s' failed: %s\n", pickReason, photo.Filename(livePhoto), outputDir, err)
 		return false, err
+	}
+
+	// 如果 old 存在, 直接移动到新目录
+	if oldPath != path {
+		if f, _ := os.Stat(oldPath); f != nil {
+			if err := os.Rename(oldPath, path); err != nil {
+				fmt.Printf("[icloudgo] [download] [%s] compatible with wrong photo time for '%s' failed: %s\n", pickReason, name, err)
+				return false, err
+			} else {
+				fmt.Printf("[icloudgo] [download] [%s] compatible with wrong photo time for '%s' success\n", pickReason, name)
+				fmt.Printf("%s -> %s\n", oldPath, path)
+			}
+		}
 	}
 
 	if f, _ := os.Stat(path); f != nil {
@@ -502,7 +519,7 @@ func newAssertQueue(data []*icloudgo.PhotoAsset) *assertQueue {
 	recentAssets := []*icloudgo.PhotoAsset{}
 	oldAssets := []*icloudgo.PhotoAsset{}
 	for _, v := range data {
-		if v.Created().Before(twoDaysAge) {
+		if v.AssetDate().Before(twoDaysAge) {
 			oldAssets = append(oldAssets, v)
 		} else {
 			recentAssets = append(recentAssets, v)
