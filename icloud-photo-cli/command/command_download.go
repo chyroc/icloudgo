@@ -380,14 +380,14 @@ func (r *downloadCommand) downloadPhotoAssetInternal(photo *icloudgo.PhotoAsset,
 
 func (r *downloadCommand) downloadTo(pickReason string, photo *icloudgo.PhotoAsset, livePhoto bool, tmpPath, realPath, saveName string) (err error) {
 	start := time.Now()
-	fmt.Printf("[icloudgo] [download] [%s] start %v, %v, %v\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize())
+	fmt.Printf("[icloudgo] [download] [%s] started %v, %v, %v\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize())
 	defer func() {
 		diff := time.Now().Sub(start)
 		speed := float64(photo.Size()) / 1024 / diff.Seconds()
 		if err != nil && !errors.Is(err, internal.ErrResourceGone) && !strings.Contains(err.Error(), "no such host") {
-			fmt.Printf("[icloudgo] [download] fail %v, %v, %v/%v %.2fKB/s err=%s\n", saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed, err)
+			fmt.Printf("[icloudgo] [download] failure %v, %v, %v/%v %.2fKB/s err=%s\n", saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed, err)
 		} else {
-			fmt.Printf("[icloudgo] [download] [%s] succ %v, %v, %v/%v %.2fKB/s\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed)
+			fmt.Printf("[icloudgo] [download] [%s] success %v, %v, %v/%v %.2fKB/s\n", pickReason, saveName, photo.Filename(livePhoto), photo.FormatSize(), diff, speed)
 		}
 	}()
 	retry := 5

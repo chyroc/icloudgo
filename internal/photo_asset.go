@@ -57,9 +57,9 @@ func (r *PhotoAsset) Filename(livePhoto bool) string {
 	}
 	l := strings.SplitN(name, ".", 2)
 	if len(l) == 2 {
-		return l[0] + ".mov"
+		return l[0] + ".MOV"
 	}
-	return name + ".mov"
+	return name + ".MOV"
 }
 
 func (r *PhotoAsset) filename() string {
