@@ -22,7 +22,7 @@ docker run \
   -e ICLOUD_WITH_LIVE_PHOTO="true" \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.21 download
+  ghcr.io/chyroc/icloud-photo-cli:0.21.0 download
 ```
 
 ### By Go
@@ -76,7 +76,7 @@ docker run \
   -e ICLOUD_FILE=/icloud_photos/filepath \
   -v /path/to/your/cookie:/icloud_cookie \
   -v /path/to/your/photos:/icloud_photos \
-  ghcr.io/chyroc/icloud-photo-cli:0.21 upload
+  ghcr.io/chyroc/icloud-photo-cli:0.21.0 upload
 ```
 
 ### By Go
