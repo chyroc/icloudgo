@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/chyroc/icloudgo/internal"
+
 	"github.com/urfave/cli/v2"
 
 	"github.com/chyroc/icloudgo"
@@ -34,9 +36,9 @@ func Upload(c *cli.Context) error {
 
 	cli, err := icloudgo.New(&icloudgo.ClientOption{
 		AppID:           username,
+		Password:        password,
 		CookieDir:       cookieDir,
-		PasswordGetter:  getTextInput("apple id password", password),
-		TwoFACodeGetter: getTextInput("2fa code", ""),
+		TwoFACodeGetter: &internal.StdinTextGetter{Tip: "2fa code"},
 		Domain:          domain,
 	})
 	if err != nil {

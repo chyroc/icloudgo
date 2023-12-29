@@ -9,12 +9,14 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-type TextGetter func(appleID string) (string, error)
+type TextGetter interface {
+	GetText(tip string) (string, error)
+}
 
 type Client struct {
 	// param
 	appleID         string
-	passwordGetter  TextGetter
+	password        string
 	twoFACodeGetter TextGetter
 
 	// storage
@@ -41,8 +43,8 @@ type Client struct {
 
 type ClientOption struct {
 	AppID           string
+	Password        string
 	CookieDir       string
-	PasswordGetter  TextGetter
 	TwoFACodeGetter TextGetter
 	Domain          string // com,cn
 }
@@ -54,7 +56,6 @@ func NewClient(option *ClientOption) (*Client, error) {
 func newClient(option *ClientOption) (*Client, error) {
 	cli := &Client{
 		twoFACodeGetter: option.TwoFACodeGetter,
-		passwordGetter:  option.PasswordGetter,
 	}
 	var err error
 

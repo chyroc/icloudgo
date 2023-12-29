@@ -23,16 +23,10 @@ func (r *Client) Authenticate(forceRefresh bool, service *string) (finalErr erro
 		}
 	}
 
-	password, err := getPassword(r.appleID, r.passwordGetter)
-	if err != nil {
-		return err
-	}
-
 	if service != nil {
 		if r.Data != nil && len(r.Data.Apps) > 0 && r.Data.Apps[*service] != nil && r.Data.Apps[*service].CanLaunchWithOneFactor {
-
 			fmt.Printf("Authenticating as %s for %s\n", r.appleID, *service)
-			if err := r.authWithCredentialsService(*service, password); err != nil {
+			if err := r.authWithCredentialsService(*service, r.password); err != nil {
 				errs = append(errs, err.Error())
 				fmt.Printf("Could not log into service. Attempting brand new login.\n")
 			} else {
@@ -44,7 +38,7 @@ func (r *Client) Authenticate(forceRefresh bool, service *string) (finalErr erro
 	// default, login to icloud.com[.cn]
 	{
 		fmt.Printf("Authenticating as %s\n", r.appleID)
-		err := r.signIn(password)
+		err := r.signIn(r.password)
 		if err == nil {
 			err = r.verify2Fa()
 			if err == nil {
@@ -57,18 +51,4 @@ func (r *Client) Authenticate(forceRefresh bool, service *string) (finalErr erro
 	}
 
 	return fmt.Errorf("login failed: %s", strings.Join(errs, "; "))
-}
-
-func getPassword(appleID string, passwordGetter TextGetter) (string, error) {
-	// if password != "" {
-	// 	return password, nil
-	// }
-	if passwordGetter == nil {
-		return "", fmt.Errorf("password getter is empty")
-	}
-	password, err := passwordGetter(appleID)
-	if err != nil {
-		return "", fmt.Errorf("password get failed, err: %w", err)
-	}
-	return password, nil
 }
