@@ -118,9 +118,33 @@ func readFile(path string) []byte {
 }
 
 const (
-	serviceDrive       = "drivews"
-	serviceDatabase    = "ckdatabasews"
-	serviceUploadImage = "uploadimagews"
+	serviceReminders           = "reminders"
+	serviceDatabase            = "ckdatabasews"
+	servicePhotosUpload        = "photosupload"
+	servicePhotos              = "photos"
+	serviceDrive               = "drivews"
+	serviceUploadImage         = "uploadimagews"
+	serviceCkShare             = "cksharews"
+	serviceFindMe              = "findme"
+	serviceCkDeviceService     = "ckdeviceservice"
+	serviceIWorkThumbnail      = "iworkthumbnailws"
+	serviceMccGateway          = "mccgateway"
+	serviceCalendar            = "calendar"
+	serviceDoc                 = "docws"
+	serviceSettings            = "settings"
+	servicePremiumMailSettings = "premiummailsettings"
+	serviceUbiquity            = "ubiquity"
+	serviceKeyValue            = "keyvalue"
+	serviceMpp                 = "mpp"
+	serviceArchive             = "archivews"
+	servicePush                = "push"
+	serviceIWMB                = "iwmb"
+	serviceIworkExport         = "iworkexportws"
+	serviceSharedLibrary       = "sharedlibrary"
+	serviceGeo                 = "geows"
+	serviceAccount             = "account"
+	serviceContacts            = "contacts"
+	serviceDeveloperApi        = "developerapi"
 )
 
 func (r *Client) getWebServiceURL(key string) (string, error) {
